@@ -238,18 +238,40 @@
                     <Download />
                   </el-icon>
                 </el-button>
+                <el-button size="small" type="warning" @click="regenerateSingleImage(index)" :loading="imageStatus[index] && imageStatus[index].includes('重新生成')">
+                  <el-icon>
+                    <Refresh />
+                  </el-icon>
+                </el-button>
+                
               </div>
             </div>
             <!-- 生成失败显示 -->
             <div class="generating-failed" v-else-if="imageStatus[index] && imageStatus[index].includes('失败')">
               <div class="failed-icon">❌</div>
               <div class="failed-text">{{ imageStatus[index] }}</div>
+              <div class="failed-actions">
+                <el-button size="small" type="warning" @click="regenerateSingleImage(index)" :loading="imageStatus[index] && imageStatus[index].includes('重新生成')">
+                  <el-icon>
+                    <Refresh />
+                  </el-icon>
+                  重新生成
+                </el-button>
+              </div>
             </div>
             <!-- 预处理/排队阶段 - 旋转加载圆圈 -->
             <div class="generating-loading" v-else-if="imageStatus[index] && (imageStatus[index].includes('预处理') || imageStatus[index].includes('排队') || imageStatus[index].includes('处理中'))">
               <div class="loading-container">
                 <div class="loading-spinner"></div>
                 <div class="loading-status">{{ imageStatus[index] }}</div>
+                <div class="loading-actions">
+                  <el-button size="small" type="warning" @click="regenerateSingleImage(index)" :loading="imageStatus[index] && imageStatus[index].includes('重新生成')">
+                    <el-icon>
+                      <Refresh />
+                    </el-icon>
+                    重新生成
+                  </el-button>
+                </div>
               </div>
             </div>
             <!-- 生成阶段 - 进度条显示 -->
@@ -273,6 +295,14 @@
                   <div class="progress-text">{{ Math.round(Math.max(imageProgress[index], 0)) }}%</div>
                 </div>
                 <div class="progress-status">{{ imageStatus[index] || '生成中...' }}</div>
+                <div class="progress-actions">
+                  <el-button size="small" type="warning" @click="regenerateSingleImage(index)" :loading="imageStatus[index] && imageStatus[index].includes('重新生成')">
+                    <el-icon>
+                      <Refresh />
+                    </el-icon>
+                    重新生成
+                  </el-button>
+                </div>
               </div>
             </div>
             <!-- 其他状态 - 旋转加载圆圈 -->
@@ -280,6 +310,14 @@
               <div class="loading-container">
                 <div class="loading-spinner"></div>
                 <div class="loading-status">{{ imageStatus[index] }}</div>
+                <div class="loading-actions">
+                  <el-button size="small" type="warning" @click="regenerateSingleImage(index)" :loading="imageStatus[index] && imageStatus[index].includes('重新生成')">
+                    <el-icon>
+                      <Refresh />
+                    </el-icon>
+                    重新生成
+                  </el-button>
+                </div>
               </div>
             </div>
             <!-- 等待生成 -->
@@ -289,7 +327,9 @@
               </el-icon>
               <div class="placeholder-text">等待生成...</div>
             </div>
-            <div class="preview-label">{{ index === 0 ? '封面' : index }}</div>
+            <div class="preview-label">
+              {{ index === 0 ? '封面' : index }}
+            </div>
           </div>
         </div>
       </div>
@@ -350,7 +390,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, Delete, Picture, MagicStick, Download, Microphone } from '@element-plus/icons-vue'
+import { Plus, Delete, Picture, MagicStick, Download, Microphone, Refresh } from '@element-plus/icons-vue'
 // 移除画廊组件引用
 import styleTemplateData from '../assets/style_template.json'
 
@@ -693,6 +733,11 @@ const generateSingleImage = async (imageIndex, promptText, selfieBase64, descrip
               imageStatus.value[imageIndex] = '生成中...'
             }
             imageProgress.value[imageIndex] += 1
+          }
+          
+          // 添加超时处理，避免无限等待
+          if (chunkCount > 300) { // 大约30秒后超时
+            throw new Error('生成超时，请重试')
           }
         }
 
@@ -1086,6 +1131,89 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+// 重新生成单个图片
+const regenerateSingleImage = async (index) => {
+  // 验证输入
+  if (!selfieImage.value) {
+    NativeMessage.error('请先上传自拍照！')
+    return
+  }
+  if (!userInfo.name.trim()) {
+    NativeMessage.warning('请输入姓名！')
+    return
+  }
+  if (!userInfo.gender) {
+    NativeMessage.warning('请选择性别！')
+    return
+  }
+  if (!userInfo.style) {
+    NativeMessage.warning('请选择图片风格！')
+    return
+  }
+
+  // 如果当前正在生成中，先中断
+  if (imageStatus.value[index] && 
+      (imageStatus.value[index].includes('生成中') || 
+       imageStatus.value[index].includes('预处理') || 
+       imageStatus.value[index].includes('排队'))) {
+    imageStatus.value[index] = '已中断'
+    NativeMessage.info(`已中断第${index + 1}张图片的生成`)
+  }
+
+  // 重置进度和状态
+  imageProgress.value[index] = 0
+  imageStatus.value[index] = '重新生成中...'
+  generatedImages.value[index] = null
+
+  try {
+    NativeMessage.info(`正在重新生成第${index + 1}张图片...`)
+
+    // 1. 压缩自拍照
+    const { base64: selfieBase64 } = await compressImage(selfieImage.value)
+
+    // 2. 准备描述图片（如果是第一张图片，不需要描述图片）
+    let descriptionBase64 = null
+    let promptText = ''
+    
+    if (index === 0) {
+      // 第一张图片：纯自拍照风格转换
+      promptText = ''
+      descriptionBase64 = null
+    } else {
+      // 后面八张图片：人物场景结合
+      const descriptionIndex = index - 1
+      if (descriptionImages.value[descriptionIndex]?.image) {
+        const { base64 } = await compressImage(descriptionImages.value[descriptionIndex].image)
+        descriptionBase64 = base64
+        promptText = "将人物与地标点融合"
+      } else {
+        NativeMessage.error(`缺少第${descriptionIndex + 1}张描述图片！`)
+        imageStatus.value[index] = '缺少描述图片'
+        return
+      }
+    }
+
+    // 3. 生成单个图片
+    await generateSingleImage(index, promptText, selfieBase64, descriptionBase64)
+
+    NativeMessage.success(`第${index + 1}张图片重新生成成功！`)
+  } catch (error) {
+    console.error(`重新生成第${index + 1}张图片失败:`, error)
+    NativeMessage.error(`第${index + 1}张图片重新生成失败: ${error.message}`)
+    imageStatus.value[index] = '重新生成失败'
+  }
+}
+
+// 删除单个图片
+const deleteSingleImage = (index) => {
+  if (generatedImages.value[index]) {
+    generatedImages.value[index] = null
+    imageProgress.value[index] = 0
+    imageStatus.value[index] = ''
+    NativeMessage.success(`已删除第${index + 1}张图片`)
+  }
+}
 </script>
 
 <style scoped>
@@ -2250,6 +2378,20 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
   min-width: 2.5em;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.preview-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 60px;
+  word-break: break-word;
 }
 
 .preview-placeholder {
@@ -2393,6 +2535,86 @@ onUnmounted(() => {
   color: #dc143c;
   text-shadow: 1px 1px 0px rgba(220, 20, 60, 0.3);
   animation: none;
+}
+
+/* 重新生成按钮样式 */
+.failed-actions,
+.loading-actions,
+.progress-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.failed-actions .el-button,
+.loading-actions .el-button,
+.progress-actions .el-button {
+  font-size: 0.8rem;
+  color: #fff;
+  background-color: #ff8c42;
+  padding: 0.3em 0.6em;
+  border-radius: 15px;
+  border: 2px solid #f7a985;
+  box-shadow: 0px 2px #f32b11;
+  transition: all 0.1s ease;
+  letter-spacing: 0.3px;
+}
+
+.failed-actions .el-button:hover,
+.loading-actions .el-button:hover,
+.progress-actions .el-button:hover {
+  background-color: #ff6347;
+  transform: translateY(-1px);
+  box-shadow: 0px 3px #f32b11;
+}
+
+.failed-actions .el-button:active,
+.loading-actions .el-button:active,
+.progress-actions .el-button:active {
+  position: relative;
+  top: 2px;
+  border: 2px solid #ffb764;
+  box-shadow: 0px 0px;
+}
+
+/* 图片操作区域的重新生成按钮 */
+.image-actions .el-button[type="warning"] {
+  background-color: #ff8c42;
+  color: #fff;
+  border-color: #f7a985;
+}
+
+.image-actions .el-button[type="warning"]:hover {
+  background-color: #ff6347;
+  transform: translateY(-1px);
+  box-shadow: 0px 3px #f32b11;
+}
+
+.image-actions .el-button[type="warning"]:active {
+  position: relative;
+  top: 2px;
+  border: 2px solid #ffb764;
+  box-shadow: 0px 0px;
+}
+
+/* 图片操作区域的删除按钮 */
+.image-actions .el-button[type="danger"] {
+  background-color: #ff6347;
+  color: #fff;
+  border-color: #f7a985;
+}
+
+.image-actions .el-button[type="danger"]:hover {
+  background-color: #dc143c;
+  transform: translateY(-1px);
+  box-shadow: 0px 3px #8b0000;
+}
+
+.image-actions .el-button[type="danger"]:active {
+  position: relative;
+  top: 2px;
+  border: 2px solid #cd5c5c;
+  box-shadow: 0px 0px;
 }
 
 /* 生成失败显示 */
@@ -3755,6 +3977,32 @@ onUnmounted(() => {
   .progress-status {
     font-size: 0.9rem;
   }
+
+  /* 移动端重新生成按钮优化 */
+  .failed-actions .el-button,
+  .loading-actions .el-button,
+  .progress-actions .el-button {
+    font-size: 0.7rem;
+    padding: 0.4em 0.8em;
+    min-width: 80px;
+  }
+
+  .image-actions .el-button {
+    font-size: 0.7rem;
+    padding: 0.3em 0.5em;
+  }
+
+  /* 移动端图片操作按钮布局优化 */
+  .image-actions {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .image-actions .el-button {
+    min-width: 28px;
+    height: 28px;
+    padding: 0.2em 0.3em;
+  }
 }
 
 /* 原生输入框卡通立体样式 */
@@ -4483,26 +4731,6 @@ onUnmounted(() => {
   }
 }
 
-.preview-item.draggable .preview-image::after {
-  content: '🔄';
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  background: rgba(255, 140, 66, 0.9);
-  color: white;
-  padding: 5px 8px;
-  border-radius: 10px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 10;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.preview-item.draggable:hover .preview-image::after {
-  opacity: 1;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
