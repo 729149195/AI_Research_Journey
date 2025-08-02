@@ -178,14 +178,98 @@
                     </div>
                 </div>
                 <div class="image-container output-container">
-                    <div v-if="!outputImage" class="preview-placeholder">
+                    <!-- 已生成的图片 -->
+                    <div v-if="outputImage" class="preview-image">
+                        <img :src="outputImage" alt="输出图片" @load="onImageLoad" @error="onImageError" />
+                        <div class="image-actions">
+                            <el-button size="small" type="warning" @click="regenerateImage" :loading="false">
+                                <el-icon>
+                                    <Refresh />
+                                </el-icon>
+                                {{ isRegenerating ? '中断重新生成' : '重新生成' }}
+                            </el-button>
+                        </div>
+                    </div>
+                    <!-- 生成失败显示 -->
+                    <div v-else-if="imageStatus && imageStatus.includes('失败')" class="generating-failed">
+                        <div class="failed-icon">❌</div>
+                        <div class="failed-text">{{ imageStatus }}</div>
+                        <div class="failed-actions">
+                            <el-button size="small" type="warning" @click="regenerateImage" :loading="false">
+                                <el-icon>
+                                    <Refresh />
+                                </el-icon>
+                                重新生成
+                            </el-button>
+                        </div>
+                    </div>
+                    <!-- 预处理/排队阶段 - 旋转加载圆圈 -->
+                    <div v-else-if="imageStatus && (imageStatus.includes('预处理') || imageStatus.includes('排队') || imageStatus.includes('处理中'))" class="generating-loading">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-status">{{ imageStatus }}</div>
+                            <div class="loading-actions">
+                                <el-button size="small" type="warning" @click="regenerateImage" :loading="false">
+                                    <el-icon>
+                                        <Refresh />
+                                    </el-icon>
+                                    {{ isRegenerating ? '中断重新生成' : '重新生成' }}
+                                </el-button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 生成阶段 - 进度条显示 -->
+                    <div v-else-if="imageStatus && imageStatus.includes('生成')" class="generating-progress">
+                        <div class="progress-container">
+                            <div class="progress-circle">
+                                <svg class="progress-ring" width="120" height="120">
+                                    <circle
+                                        class="progress-ring-circle"
+                                        stroke="#ff8c42"
+                                        stroke-width="8"
+                                        fill="transparent"
+                                        r="52"
+                                        cx="60"
+                                        cy="60"
+                                        :stroke-dasharray="`${2 * Math.PI * 52}`"
+                                        :stroke-dashoffset="`${2 * Math.PI * 52 * (1 - Math.max(progress, 0) / 100)}`"
+                                        style="--mobile-radius: 42"
+                                    />
+                                </svg>
+                                <div class="progress-circle-text">{{ Math.round(Math.max(progress, 0)) }}%</div>
+                            </div>
+                            <div class="progress-status">{{ imageStatus || '生成中...' }}</div>
+                            <div class="progress-actions">
+                                <el-button size="small" type="warning" @click="regenerateImage" :loading="false">
+                                    <el-icon>
+                                        <Refresh />
+                                    </el-icon>
+                                    {{ isRegenerating ? '中断重新生成' : '重新生成' }}
+                                </el-button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 其他状态 - 旋转加载圆圈 -->
+                    <div v-else-if="imageStatus" class="generating-loading">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-status">{{ imageStatus }}</div>
+                            <div class="loading-actions">
+                                <el-button size="small" type="warning" @click="regenerateImage" :loading="false">
+                                    <el-icon>
+                                        <Refresh />
+                                    </el-icon>
+                                    {{ isRegenerating ? '中断重新生成' : '重新生成' }}
+                                </el-button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 等待生成 -->
+                    <div v-else class="preview-placeholder">
                         <el-icon class="placeholder-icon">
                             <Picture />
                         </el-icon>
                         <div class="placeholder-text">生成后的图片将显示在此</div>
-                    </div>
-                    <div v-else class="preview-image">
-                        <img :src="outputImage" alt="输出图片" />
                     </div>
                 </div>
             </div>
@@ -276,7 +360,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, Delete, MagicStick, Download, Picture } from '@element-plus/icons-vue'
+import { Plus, Delete, MagicStick, Download, Picture, Refresh } from '@element-plus/icons-vue'
 
 const API_BASE_URL = 'https://api.lingximoyu.com'
 const API_KEY = 'sk-JdJqP2CyAUXtqGL36d25AaDa6e9b46868bF45d0a515d7882'
@@ -287,6 +371,18 @@ const inputPreview = ref('')
 
 // 输出图片
 const outputImage = ref('')
+
+// 图片状态和重新生成状态
+const imageStatus = ref('')
+const isRegenerating = ref(false)
+
+// 用于中断请求的控制器
+let currentAbortController = null
+
+// 防抖控制
+let lastGenerateTime = 0
+let lastRegenerateTime = 0
+const REGENERATE_DEBOUNCE_TIME = 1000 // 1秒内只能重新生成一次
 
 // 风格选项
 const styleOptions = [
@@ -448,9 +544,34 @@ const handleClickOutside = (event) => {
 // 生成风格迁移结果
 const generate = async () => {
     if (!canGenerate.value) return
+    
+    // 防抖检查
+    const now = Date.now()
+    if (now - lastGenerateTime < REGENERATE_DEBOUNCE_TIME) {
+        console.log('生成过于频繁，忽略点击')
+        return
+    }
+    lastGenerateTime = now
+    
     isGenerating.value = true
+    isRegenerating.value = false // 确保重新生成状态为false
     progress.value = 0
     statusText.value = '预处理中...'
+    imageStatus.value = '预处理中...'
+    outputImage.value = '' // 清空之前的图片
+    
+    // 中断之前的请求并等待一小段时间
+    if (currentAbortController) {
+        try {
+            currentAbortController.abort()
+        } catch (e) {
+            console.warn('中断请求时出错:', e)
+        }
+        currentAbortController = null
+        // 等待一小段时间确保请求完全中断
+        await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    
     try {
         // 将文件转为base64
         const { base64, width: imgW, height: imgH } = await compressImage(inputFile.value)
@@ -470,6 +591,9 @@ const generate = async () => {
             ],
         }
 
+        // 创建新的 AbortController
+        currentAbortController = new AbortController()
+
         const res = await fetch(`/lingxi/v1/chat/completions`, {
             method: 'POST',
             headers: {
@@ -477,6 +601,7 @@ const generate = async () => {
                 Authorization: `Bearer ${API_KEY}`,
             },
             body: JSON.stringify(body),
+            signal: currentAbortController.signal
         })
 
         if (!res.ok || !res.body) {
@@ -488,65 +613,87 @@ const generate = async () => {
         const decoder = new TextDecoder('utf-8')
         let accumulated = ''
         let chunkCount = 0
-        while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            const chunk = decoder.decode(value, { stream: true })
-            const lines = chunk.split('\n')
-            for (const line of lines) {
-                if (!line.startsWith('data:')) continue
-                const payload = line.replace(/^data:\s*/, '')
-                if (payload === '[DONE]') {
-                    progress.value = 100
-                    break
-                }
-                try {
-                    const json = JSON.parse(payload)
-                    const contentDelta = json.choices?.[0]?.delta?.content || ''
-                    accumulated += contentDelta
-
-                    // 队列/预处理提示
-                    if (contentDelta.includes('任务正在队列中')) {
-                        statusText.value = '排队中...'
-                    }
-
-                    const pctMatch = contentDelta.match(/进度：([\d.]+)%/)
-                    if (pctMatch) {
-                        statusText.value = ''
-                        progress.value = Math.min(99, parseFloat(pctMatch[1]).toFixed(1))
-                    }
-
-                    if (contentDelta.includes('图片绘制成功')) {
-                        statusText.value = '生成成功'
-                        NativeMessage.success('图片风格转换成功！')
-                    }
-
-                    // Fallback：仍然用 chunk 数来估算，避免长时间0%
-                    if (!pctMatch) {
-                        chunkCount++
-                        if (chunkCount % 10 === 0 && progress.value < 90) {
-                            progress.value += 1
-                        }
-                    }
-
-                    // 尝试在增量中解析 URL
-                    const urlMatch = accumulated.match(/https?:[^\s)]+/)
-                    if (urlMatch) {
-                        outputImage.value = urlMatch[0]
+        
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                const chunk = decoder.decode(value, { stream: true })
+                const lines = chunk.split('\n')
+                for (const line of lines) {
+                    if (!line.startsWith('data:')) continue
+                    const payload = line.replace(/^data:\s*/, '')
+                    if (payload === '[DONE]') {
                         progress.value = 100
+                        break
                     }
-                } catch (e) {
-                    console.warn('解析流数据失败', e)
+                    try {
+                        const json = JSON.parse(payload)
+                        const contentDelta = json.choices?.[0]?.delta?.content || ''
+                        accumulated += contentDelta
+
+                        // 队列/预处理提示
+                        if (contentDelta.includes('任务正在队列中')) {
+                            statusText.value = '排队中...'
+                            imageStatus.value = '排队中...'
+                        }
+
+                        const pctMatch = contentDelta.match(/进度：([\d.]+)%/)
+                        if (pctMatch) {
+                            statusText.value = ''
+                            imageStatus.value = '生成中...'
+                            progress.value = Math.min(99, parseFloat(pctMatch[1]).toFixed(1))
+                        }
+
+                        if (contentDelta.includes('图片绘制成功')) {
+                            statusText.value = '生成成功'
+                            imageStatus.value = '生成成功'
+                            NativeMessage.success('图片风格转换成功！')
+                        }
+
+                        // Fallback：仍然用 chunk 数来估算，避免长时间0%
+                        if (!pctMatch) {
+                            chunkCount++
+                            if (chunkCount % 10 === 0 && progress.value < 90) {
+                                progress.value += 1
+                            }
+                        }
+
+                        // 尝试在增量中解析 URL
+                        const urlMatch = accumulated.match(/https?:[^\s)]+/)
+                        if (urlMatch) {
+                            outputImage.value = urlMatch[0]
+                            progress.value = 100
+                            imageStatus.value = '图片已获取'
+                        }
+                    } catch (e) {
+                        console.warn('解析流数据失败', e)
+                    }
                 }
+            }
+        } finally {
+            // 确保reader被正确关闭
+            try {
+                reader.releaseLock()
+            } catch (e) {
+                console.warn('释放reader锁时出错:', e)
             }
         }
     } catch (err) {
         console.error(err)
-        NativeMessage.error(err.message || '生成失败，请重试！')
+        // 如果是用户主动中断，不显示错误消息
+        if (err.name !== 'AbortError') {
+            imageStatus.value = '生成失败'
+            NativeMessage.error(err.message || '生成失败，请重试！')
+        }
     } finally {
         isGenerating.value = false
+        currentAbortController = null
         // 若未成功获取图片，则复位进度；成功则保持100%
-        if (!outputImage.value) progress.value = 0
+        if (!outputImage.value) {
+            progress.value = 0
+            imageStatus.value = '生成失败'
+        }
     }
 }
 
@@ -556,6 +703,203 @@ const download = () => {
     link.href = outputImage.value
     link.download = 'style_transfer.png'
     link.click()
+}
+
+// 重新生成图片
+const regenerateImage = async () => {
+    console.log('重新生成按钮被点击', { isRegenerating: isRegenerating.value, inputFile: !!inputFile.value, selectedStyle: selectedStyle.value })
+    
+    // 检查基本条件
+    if (!inputFile.value || !selectedStyle.value) {
+        console.log('基本条件不满足', { inputFile: !!inputFile.value, selectedStyle: selectedStyle.value })
+        NativeMessage.warning('请先上传图片并选择风格！')
+        return
+    }
+    
+    // 如果正在重新生成，则中断当前请求并立即开始新的重新生成
+    if (isRegenerating.value) {
+        console.log('正在重新生成，中断当前请求并开始新的重新生成')
+        if (currentAbortController) {
+            try {
+                currentAbortController.abort()
+            } catch (e) {
+                console.warn('中断请求时出错:', e)
+            }
+            currentAbortController = null
+        }
+        // 立即开始新的重新生成，不等待防抖
+        await startRegenerate()
+        return
+    }
+    
+    // 防抖检查（只在非重新生成状态下）
+    const now = Date.now()
+    if (now - lastRegenerateTime < REGENERATE_DEBOUNCE_TIME) {
+        console.log('重新生成过于频繁，忽略点击')
+        return
+    }
+    lastRegenerateTime = now
+    
+        // 开始重新生成
+    await startRegenerate()
+}
+
+// 实际的重新生成逻辑
+const startRegenerate = async () => {
+    // 中断当前请求并等待一小段时间
+    if (currentAbortController) {
+        try {
+            currentAbortController.abort()
+        } catch (e) {
+            console.warn('中断请求时出错:', e)
+        }
+        currentAbortController = null
+        // 等待一小段时间确保请求完全中断
+        await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    console.log('开始重新生成')
+    isRegenerating.value = true
+    isGenerating.value = true // 设置主生成状态为true，让开始迁移按钮显示加载状态
+    outputImage.value = '' // 清空当前图片
+    progress.value = 0
+    statusText.value = '预处理中...'
+    imageStatus.value = '预处理中...'
+    
+    try {
+        const { base64, width: imgW, height: imgH } = await compressImage(inputFile.value)
+        const prompt = `将这张图片转换成${selectedStyle.value}，输出尺寸${imgW}x${imgH}`
+
+        const body = {
+            model: 'gpt-4o-image',
+            stream: true,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        { type: 'image_url', image_url: { url: base64 } },
+                    ],
+                },
+            ],
+        }
+
+        // 创建新的 AbortController
+        currentAbortController = new AbortController()
+
+        const res = await fetch(`/lingxi/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify(body),
+            signal: currentAbortController.signal
+        })
+
+        if (!res.ok || !res.body) {
+            const txt = await res.text()
+            throw new Error(txt || '接口请求失败')
+        }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let accumulated = ''
+        let chunkCount = 0
+        
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                const chunk = decoder.decode(value, { stream: true })
+                const lines = chunk.split('\n')
+                for (const line of lines) {
+                    if (!line.startsWith('data:')) continue
+                    const payload = line.replace(/^data:\s*/, '')
+                    if (payload === '[DONE]') {
+                        progress.value = 100
+                        break
+                    }
+                    try {
+                        const json = JSON.parse(payload)
+                        const contentDelta = json.choices?.[0]?.delta?.content || ''
+                        accumulated += contentDelta
+
+                        // 队列/预处理提示
+                        if (contentDelta.includes('任务正在队列中')) {
+                            statusText.value = '排队中...'
+                            imageStatus.value = '排队中...'
+                        }
+
+                        const pctMatch = contentDelta.match(/进度：([\d.]+)%/)
+                        if (pctMatch) {
+                            statusText.value = ''
+                            imageStatus.value = '生成中...'
+                            progress.value = Math.min(99, parseFloat(pctMatch[1]).toFixed(1))
+                        }
+
+                        if (contentDelta.includes('图片绘制成功')) {
+                            statusText.value = '生成成功'
+                            imageStatus.value = '生成成功'
+                            NativeMessage.success('图片风格转换成功！')
+                        }
+
+                        // Fallback：仍然用 chunk 数来估算，避免长时间0%
+                        if (!pctMatch && !contentDelta.includes('任务正在队列中')) {
+                            chunkCount++
+                            if (chunkCount % 10 === 0 && progress.value < 90) {
+                                progress.value += 1
+                            }
+                        }
+
+                        // 尝试在增量中解析 URL
+                        const urlMatch = accumulated.match(/https?:[^\s)]+/)
+                        if (urlMatch) {
+                            outputImage.value = urlMatch[0]
+                            progress.value = 100
+                            imageStatus.value = '图片已获取'
+                        }
+                    } catch (e) {
+                        console.warn('解析流数据失败', e)
+                    }
+                }
+            }
+        } finally {
+            // 确保reader被正确关闭
+            try {
+                reader.releaseLock()
+            } catch (e) {
+                console.warn('释放reader锁时出错:', e)
+            }
+        }
+    } catch (err) {
+        console.error('重新生成失败:', err)
+        // 如果是用户主动中断，不显示错误消息
+        if (err.name !== 'AbortError') {
+            imageStatus.value = '重新生成失败'
+            NativeMessage.error(err.message || '重新生成失败，请重试！')
+        }
+    } finally {
+        console.log('重新生成完成，重置状态')
+        isRegenerating.value = false
+        isGenerating.value = false // 确保主生成状态也被重置
+        currentAbortController = null
+        // 若未成功获取图片，则复位进度；成功则保持100%
+        if (!outputImage.value) {
+            progress.value = 0
+            imageStatus.value = '重新生成失败'
+        }
+    }
+}
+
+// 图片加载成功
+const onImageLoad = () => {
+    imageStatus.value = '图片加载成功'
+}
+
+// 图片加载失败
+const onImageError = () => {
+    imageStatus.value = '图片加载失败'
 }
 
 // 将图片压缩到最长边 768px，并导出为 0.7 质量 JPEG
@@ -595,6 +939,15 @@ onMounted(() => {
 // 组件卸载时清理事件监听
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
+    // 清理当前请求
+    if (currentAbortController) {
+        try {
+            currentAbortController.abort()
+        } catch (e) {
+            console.warn('组件卸载时中断请求出错:', e)
+        }
+        currentAbortController = null
+    }
 })
 </script>
 
@@ -1871,6 +2224,7 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .preview-image img {
@@ -1887,6 +2241,315 @@ onUnmounted(() => {
     object-fit: cover;
     border-radius: 10px;
     border: 2px solid #f7a985;
+}
+
+/* 图片操作按钮样式 */
+.image-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.image-actions .el-button {
+    font-size: 0.8rem;
+    color: #fff;
+    background-color: #ff6347;
+    padding: 0.3em 0.6em;
+    border-radius: 20px;
+    border: 3px solid #f7a985;
+    box-shadow: 0px 2px #8b0000;
+    transition: all 0.1s ease;
+}
+
+.image-actions .el-button:hover {
+    background-color: #ff4500;
+    transform: translateY(-1px);
+    box-shadow: 0px 3px #8b0000;
+}
+
+.image-actions .el-button:active {
+    position: relative;
+    top: 2px;
+    border: 3px solid #cd5c5c;
+    box-shadow: 0px 0px;
+}
+
+.image-actions .el-button[type="warning"] {
+    background-color: #ff8c42;
+    color: #fff;
+    border-color: #f7a985;
+}
+
+.image-actions .el-button[type="warning"]:hover {
+    background-color: #ff6347;
+    transform: translateY(-1px);
+    box-shadow: 0px 3px #f32b11;
+}
+
+.image-actions .el-button[type="warning"]:active {
+    position: relative;
+    top: 2px;
+    border: 3px solid #ffb764;
+    box-shadow: 0px 0px;
+}
+
+/* 生成失败样式 */
+.generating-failed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #dc143c;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+    font-size: 1.2rem;
+    font-weight: 600;
+    gap: 15px;
+}
+
+.failed-icon {
+    font-size: 3rem;
+    color: #dc143c;
+    text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.failed-text {
+    text-align: center;
+    color: #dc143c;
+}
+
+.failed-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.failed-actions .el-button {
+    font-size: 0.8rem;
+    color: #fff;
+    background-color: #ff8c42;
+    padding: 0.3em 0.6em;
+    border-radius: 20px;
+    border: 3px solid #f7a985;
+    box-shadow: 0px 2px #f32b11;
+    transition: all 0.1s ease;
+}
+
+.failed-actions .el-button:hover {
+    background-color: #ff6347;
+    transform: translateY(-1px);
+    box-shadow: 0px 3px #f32b11;
+}
+
+.failed-actions .el-button:active {
+    position: relative;
+    top: 2px;
+    border: 3px solid #ffb764;
+    box-shadow: 0px 0px;
+}
+
+/* 生成加载样式 */
+.generating-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8b4513;
+    text-shadow: 1px 1px 0px #ffd700;
+    font-size: 1.2rem;
+    font-weight: 600;
+    gap: 15px;
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.loading-spinner {
+    width: 80px;
+    height: 80px;
+    border: 8px solid rgba(255, 140, 66, 0.2);
+    border-top: 8px solid #ff8c42;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(255, 140, 66, 0.4));
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-status {
+    text-align: center;
+    color: #8b4513;
+    text-shadow: 1px 1px 0px #ffd700;
+    animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+.loading-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.loading-actions .el-button {
+    font-size: 0.8rem;
+    color: #fff;
+    background-color: #ff8c42;
+    padding: 0.3em 0.6em;
+    border-radius: 20px;
+    border: 3px solid #f7a985;
+    box-shadow: 0px 2px #f32b11;
+    transition: all 0.1s ease;
+}
+
+.loading-actions .el-button:hover {
+    background-color: #ff6347;
+    transform: translateY(-1px);
+    box-shadow: 0px 3px #f32b11;
+}
+
+.loading-actions .el-button:active {
+    position: relative;
+    top: 2px;
+    border: 3px solid #ffb764;
+    box-shadow: 0px 0px;
+}
+
+/* 生成进度样式 */
+.generating-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8b4513;
+    text-shadow: 1px 1px 0px #ffd700;
+    font-size: 1.2rem;
+    font-weight: 600;
+    gap: 15px;
+}
+
+.progress-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.progress-circle {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.progress-ring-circle {
+    transition: stroke-dashoffset 0.3s ease;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px rgba(255, 140, 66, 0.4));
+}
+
+.progress-circle-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ff8c42;
+    text-shadow: 1px 1px 0px #ffd700;
+    animation: progressPulse 2s ease-in-out infinite;
+    z-index: 2;
+}
+
+@keyframes progressPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+.progress-status {
+    text-align: center;
+    color: #8b4513;
+    text-shadow: 1px 1px 0px #ffd700;
+    animation: statusBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes statusBlink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.progress-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.progress-actions .el-button {
+    font-size: 0.8rem;
+    color: #fff;
+    background-color: #ff8c42;
+    padding: 0.3em 0.6em;
+    border-radius: 20px;
+    border: 3px solid #f7a985;
+    box-shadow: 0px 2px #f32b11;
+    transition: all 0.1s ease;
+}
+
+.progress-actions .el-button:hover {
+    background-color: #ff6347;
+    transform: translateY(-1px);
+    box-shadow: 0px 3px #f32b11;
+}
+
+.progress-actions .el-button:active {
+    position: relative;
+    top: 2px;
+    border: 3px solid #ffb764;
+    box-shadow: 0px 0px;
 }
 
 /* 原生消息提示容器 */
@@ -2186,6 +2849,72 @@ onUnmounted(() => {
         min-width: 20px;
         margin-left: 10px;
     }
+
+    /* 移动端加载圆圈优化 */
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border-width: 6px;
+    }
+
+    .loading-status {
+        font-size: 0.9rem;
+    }
+
+    .progress-circle {
+        width: 100px;
+        height: 100px;
+    }
+
+    .progress-ring {
+        width: 100px;
+        height: 100px;
+    }
+
+    .progress-ring-circle {
+        r: 42;
+        cx: 50;
+        cy: 50;
+        stroke-width: 6;
+    }
+
+    .progress-circle-text {
+        font-size: 1rem;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .progress-status {
+        font-size: 0.9rem;
+    }
+
+    /* 移动端重新生成按钮优化 */
+    .failed-actions .el-button,
+    .loading-actions .el-button,
+    .progress-actions .el-button {
+        font-size: 0.7rem;
+        padding: 0.4em 0.8em;
+        min-width: 80px;
+    }
+
+    .image-actions .el-button {
+        font-size: 0.7rem;
+        padding: 0.3em 0.5em;
+    }
+
+    /* 移动端图片操作按钮布局优化 */
+    .image-actions {
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .image-actions .el-button {
+        min-width: 28px;
+        height: 28px;
+        padding: 0.2em 0.3em;
+    }
 }
 
 @media (max-width: 480px) {
@@ -2250,5 +2979,85 @@ onUnmounted(() => {
         padding: 15px;
         gap: 12px;
     }
+
+    /* 超小屏幕加载圆圈优化 */
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border-width: 5px;
+    }
+
+    .progress-circle {
+        width: 80px;
+        height: 80px;
+    }
+
+    .progress-ring {
+        width: 80px;
+        height: 80px;
+    }
+
+    .progress-ring-circle {
+        r: 35;
+        cx: 40;
+        cy: 40;
+        stroke-width: 5;
+    }
+
+    .progress-circle-text {
+        font-size: 1rem;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .progress-status {
+        font-size: 0.8rem;
+    }
+
+    /* 超小屏幕重新生成按钮优化 */
+    .failed-actions .el-button,
+    .loading-actions .el-button,
+    .progress-actions .el-button {
+        font-size: 0.6rem;
+        padding: 0.3em 0.6em;
+        min-width: 70px;
+    }
+
+    .image-actions .el-button {
+        font-size: 0.6rem;
+        padding: 0.2em 0.4em;
+        min-width: 24px;
+        height: 24px;
+    }
+}
+
+/* 加载状态下的按钮样式 */
+.image-actions .el-button.is-loading,
+.failed-actions .el-button.is-loading,
+.loading-actions .el-button.is-loading,
+.progress-actions .el-button.is-loading {
+    opacity: 0.8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.image-actions .el-button.is-loading:hover,
+.failed-actions .el-button.is-loading:hover,
+.loading-actions .el-button.is-loading:hover,
+.progress-actions .el-button.is-loading:hover {
+    transform: none;
+    box-shadow: 0px 2px #f32b11;
+}
+
+/* 确保加载状态下的按钮仍然可见 */
+.el-button.is-loading .el-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 </style>
