@@ -95,7 +95,7 @@
                 <Plus />
               </el-icon>
               <div class="upload-text">拖拽或点击上传自拍照</div>
-              <div class="upload-hint">支持JPG、PNG格式，小于10MB</div>
+              <div class="upload-hint">支持JPG、PNG格式</div>
             </div>
             <div v-else class="image-preview">
               <img :src="selfiePreview" alt="自拍照" />
@@ -111,7 +111,7 @@
         </div>
         <!-- 8张描述图片上传 -->
         <div class="description-uploads">
-          <h3>2. 上传8张描述图片</h3>
+          <h3>2. 上传8张地标图片</h3>
           <div class="upload-grid">
             <div v-for="(item, index) in descriptionImages" :key="index" class="upload-item">
               <div class="upload-number">{{ index + 1 }}</div>
@@ -561,11 +561,7 @@ const validateImage = (file) => {
     NativeMessage.error('请上传JPG或PNG格式的图片！')
     return false
   }
-  const isLt10M = file.size / 1024 / 1024 < 10
-  if (!isLt10M) {
-    NativeMessage.error('图片大小不能超过10MB！')
-    return false
-  }
+  // 移除大小限制，允许任意大小的图片
   return true
 }
 
