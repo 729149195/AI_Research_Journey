@@ -664,7 +664,7 @@ const generateSingleImage = async (imageIndex, promptText, selfieBase64, descrip
     })
   }
 
-  const res = await fetch(`/lingxi/v1/chat/completions`, {
+  const res = await fetch(`https://api.lingximoyu.com/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

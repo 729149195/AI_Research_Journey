@@ -594,7 +594,7 @@ const generate = async () => {
         // 创建新的 AbortController
         currentAbortController = new AbortController()
 
-        const res = await fetch(`/lingxi/v1/chat/completions`, {
+        const res = await fetch(`https://api.lingximoyu.com/v1/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -787,7 +787,7 @@ const startRegenerate = async () => {
         // 创建新的 AbortController
         currentAbortController = new AbortController()
 
-        const res = await fetch(`/lingxi/v1/chat/completions`, {
+        const res = await fetch(`https://api.lingximoyu.com/v1/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
