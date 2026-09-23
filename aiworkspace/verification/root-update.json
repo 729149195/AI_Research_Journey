@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "scenarios": [
+    {
+      "layout": "aiworkspace",
+      "passed": true,
+      "actual_fetch_and_editable_install": true,
+      "nonoverlapping_merge": true,
+      "explicit_conflict_resolution": true,
+      "dirty_checkout_protected": true,
+      "preview_commit_locked": true,
+      "post_update_edits_protected_on_rollback": true,
+      "unsupported_schema_blocked": true,
+      "research_hashes_unchanged": true,
+      "protected_files": [
+        "workspace/state.json",
+        "manuscript/main.md",
+        "workspace/research/idea-evaluation.md",
+        "workspace/rules/project-policy.md"
+      ]
+    },
+    {
+      "layout": "ai-research-workspace",
+      "passed": true,
+      "actual_fetch_and_editable_install": true,
+      "nonoverlapping_merge": true,
+      "explicit_conflict_resolution": true,
+      "dirty_checkout_protected": true,
+      "preview_commit_locked": true,
+      "post_update_edits_protected_on_rollback": true,
+      "unsupported_schema_blocked": true,
+      "research_hashes_unchanged": true,
+      "protected_files": [
+        "workspace/state.json",
+        "manuscript/main.md",
+        "workspace/research/idea-evaluation.md",
+        "workspace/rules/project-policy.md"
+      ]
+    }
+  ],
+  "scope": "Synthetic local Git integration; no live model or scientific validation."
+}

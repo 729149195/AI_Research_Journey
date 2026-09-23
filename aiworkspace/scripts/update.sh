@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "${PYTHON:-python3}" "$SCRIPT_DIR/update.py" "$@"
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$HERE/../../update_aiworkspace.py" "$@"

@@ -1,0 +1,30 @@
+{
+  "boundary": "Actual computation and software walkthrough with synthetic data. Human declarations are simulations. No live model, real expert review or scientific validation occurred.",
+  "checks": {
+    "bidirectional_sync": true,
+    "incremental_upgrade": true,
+    "machine_review": "pass",
+    "real_submission_from_demo_blocked": true,
+    "rollback": true,
+    "unreviewed_release_blocked": true,
+    "user_data_preserved": true
+  },
+  "computed_values": {
+    "baseline_mean": 22.5,
+    "candidate_mean": 18.0,
+    "n": 12,
+    "paired_mean_difference": -4.5,
+    "synthetic": true
+  },
+  "exported": "/mnt/data/final-workspace-demo/dist/demo-submission",
+  "project": "/mnt/data/final-workspace-demo",
+  "steps": [
+    "Confirm demonstration question, argument and descriptive method",
+    "Actually execute local Python and hash inputs, script, JSON, text and SVG outputs",
+    "Bind computation, evidence, Claim, figure and all six manuscript sections",
+    "Record explicitly simulated human declarations; actually check original quote and byte hashes",
+    "Synchronize Workspace-to-Manuscript and an external manuscript edit back; require semantic review",
+    "Incrementally update a used study and roll back; assert research/manuscript/filled template/policy hashes unchanged",
+    "Pass machine checks; simulate all review declarations; export only with explicit demonstration flag"
+  ]
+}

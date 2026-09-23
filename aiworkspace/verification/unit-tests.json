@@ -1,0 +1,12 @@
+{
+  "at": "2026-09-23T13:18:04.263673+00:00",
+  "python": "3.13.5",
+  "platform": "Linux",
+  "tests_run": 65,
+  "successful": true,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "elapsed_seconds": 8.013,
+  "boundary": "Actual local software tests; mock APIs and synthetic data are not live-model or scientific validation."
+}

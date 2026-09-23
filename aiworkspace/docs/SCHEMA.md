@@ -1,103 +1,77 @@
-# 状态契约：schema_version = 1
+# 数据契约（Schema 1）
 
-权威状态位于 `workspace/state.json`，外部原文、数据、代码、图表和稿件保存在独立文件中。普通使用者通过 CLI 提案操作，不直接改整个 state.json。
+完整可运行参考是 `rw demo NEW_PATH` 生成的 `workspace/state.json`。请通过提案/CLI 修改研究；不要手工覆盖整个状态文件。
 
-## 节点公共结构
+## Node
 
-```json
-{
-  "id": "CLM-001",
-  "kind": "claim",
-  "title": "有范围限制的论点",
-  "status": "draft",
-  "depends_on": ["EVD-001", "MTH-001"],
-  "data": {
-    "text": "具体断言，不填入尚未发生的实验结果。",
-    "strength": "descriptive",
-    "scope": "明确研究对象、条件和推断范围",
-    "counterevidence_search": {
-      "query": "实际执行的反证检索式",
-      "date": "实际检索日期",
-      "result": "真实检索结果与覆盖局限"
-    },
-    "responses": {}
-  }
-}
-```
+每个节点必需 `id`、`kind`、`title`、`status`、`depends_on`、`data`。ID 如 RQ-001、CLM-001，使用大写前缀、连字符与字母数字；具体约束以 `model.py` 为准。status 是 draft / confirmed / retired。扩展字段置于 data；验证收据由 verify 生成，普通 AI 提案不能生成。
 
-以上是字段说明模板，不能原样当成实际证据。ID 使用大写前缀和连字符，例如 RQ-001、HYP-001、ARG-001、CLM-001、SRC-001、EVD-001、MTH-001、RUN-...、FIG-001、SEC-ABSTRACT、RULE-001、DEC-001。改题目不应改稳定 ID。
+| kind | data 中关键内容 |
+|---|---|
+| question / hypothesis / argument | text、范围、假设、贡献与推断角色 |
+| section | text：完整 Markdown 章节；depends_on 连接总体论证及 Claims |
+| claim | text、strength（descriptive/association/causal/hypothesis）、scope、counterevidence_search（query/date/result）、responses（反证ID→回应） |
+| source | category、url、snapshot（UTF-8 原文摘录路径）；doi、版本/出版状态、更正撤稿检查；retracted 为 true 会阻断确证支持 |
+| evidence | source、claim、quote、locator、scope、relation（supports/refutes/qualifies）；depends_on 包含 source |
+| method | script、inputs、outputs、args、seed、design；因果论点需 causal_identification 并接受专家核查 |
+| result | 实际执行器生成 method/method_hash、code/inputs/outputs 哈希、args、seed、环境、退出码与时间 |
+| figure | path、sha256、claims、purpose、caption、alt_text；依赖关联 Claim 与实际 result/evidence |
+| rule | type（required_text/forbidden_text/human）、value、原始出处、适用范围/日期；未实现自动类型不会静默通过 |
+| decision | 实际备选项、选择、理由、参与者、重评条件；仅供上下文参考 |
 
-kind 有 12 类：question、hypothesis、argument、section、claim、source、evidence、method、result、figure、rule、decision。status 为 draft/confirmed/retired。扩展字段放在 data，不能任意增加顶层属性。depends_on 指向上游依赖；不得重复或自依赖。循环依赖遍历会终止，但科学论证仍需独立检查。
+source.category 可为 peer_reviewed、official_data、standard、primary、preprint、institutional、news、blog、unclassified。分类本身不证明内容可靠或适用。新闻等作为原始研究对象时需明确原始材料角色。
 
-## 各类数据
-
-| kind | 主要 data 字段 | 约束 |
-|---|---|---|
-| question / hypothesis / argument | text、范围、前提、贡献等 | 核心逻辑需确认，不能留占位文字 |
-| section | text：完整 Markdown 章节 | 与 manuscript 同 ID 标记对应 |
-| claim | text、strength、scope、counterevidence_search、responses | strength 为 descriptive/association/causal/hypothesis；因果断言需明确辨识设计 |
-| source | category、url、snapshot；可带 doi、retracted 等 | snapshot 为有权限保存的 UTF-8 原始摘录/结果；元数据不等于核验 |
-| evidence | source、claim、quote、locator、scope、relation | relation 为 supports/refutes/qualifies；必须依赖其 source |
-| method | script、inputs、outputs、args、seed、design | 已确认方法，审阅过的本地 Python；新输出路径 |
-| result | method、method_hash、code/inputs/outputs 哈希、执行信息 | 来自真实 runner，需匹配执行事件 |
-| figure | path、sha256、claims、caption、purpose、alt_text | 依赖 Claim 与 result/evidence；表格也可作为受追踪资产 |
-| rule | type、value、来源、版本、适用性 | required_text/forbidden_text/human；未知检查器阻塞 |
-| decision | options、rationale、participants、revisit_conditions 等 | 保存选择依据，不当作事实来源 |
-
-来源 category：peer_reviewed、official_data、standard、primary、preprint、institutional、news、blog、unclassified。默认可准入的类别仍须实际核验。以某段新闻为研究原始语料时，实际核验者可提供 primary_for 例外理由；不能用统一来源等级替代研究适用性判断。
-
-Claim 的 depends_on 应包含所有相关支持、反驳和限定证据。Evidence 的 data.claim 指向具体断言；核验绑定该断言的 text/strength/scope。反证的处理记录在 claim.data.responses，以证据 ID 为键，值为实际回应，不应删掉不利结果。
-
-## 方法示例
+## 可导入提案
 
 ```json
 {
-  "id": "MTH-001",
-  "kind": "method",
-  "title": "经过审阅的描述性分析",
-  "status": "confirmed",
-  "depends_on": ["RQ-001"],
-  "data": {
-    "script": "workspace/methods/descriptives.py",
-    "inputs": ["workspace/data/input.csv"],
-    "outputs": ["workspace/results/run-001/summary.json"],
-    "args": [],
-    "seed": 0,
-    "design": "填写实际设计和可支持的推断范围"
-  }
-}
-```
-
-先真实创建并检查输入和代码，再运行。runner 不会替你生成它们。已有输出会被拒绝，以免旧文件冒充本轮结果；下一轮用新目录。输出只允许 results、manuscript/figures 或 supplementary。代码执行不是沙箱。
-
-## 提案结构
-
-```json
-{
-  "summary": "目的与依据",
-  "base_fingerprint": "任务包中的真实指纹，可选但推荐保留",
+  "summary": "具体说明为什么修改",
+  "base_fingerprint": "来自当前任务包的实际值",
   "operations": [
-    {"op": "upsert", "node": {"此处": "完整合法节点"}},
     {
-      "op": "write",
-      "path": "manuscript/main.md",
-      "text": "完整新 Markdown，保留章节标记",
-      "expected_sha256": "原文件真实 SHA-256；新文件为 null"
+      "op": "upsert",
+      "node": {
+        "id": "CLM-001",
+        "kind": "claim",
+        "title": "有范围限制的论点",
+        "status": "draft",
+        "depends_on": [],
+        "data": {
+          "text": "待验证的具体论点。",
+          "strength": "hypothesis",
+          "scope": "明确对象和条件，当前证据尚缺。"
+        }
+      }
     }
   ]
 }
 ```
 
-此处是结构说明，不是可直接运行的合法研究提案。[上手文档](GETTING_STARTED.md) 有完整可用示例。一次最多 100 个操作。upsert 是全节点替换，必须主动保留仍然有效的数据。write 仅限受管辖 Markdown，不可写 state.json、脚本、raw data 或伪造报告。
+上面 fingerprint 是示意，必须替换为实际值。手工创建新提案可省略该字段，由 propose 以当前指纹建基线；模型任务包回传应保留它。每份提案包含 1–100 个 operation，不允许同一节点/路径重复修改。
 
-提案状态 pending → applied/rejected，保存创建者、时间、基准指纹、操作与影响范围。应用须明确批准并提供解释；过期时重新生成。
+`upsert` 完整替换，先读取旧节点并保留有效信息。`write` 需要完整新文本和旧文件哈希：
 
-## 核验、问题、审查与同步
+```json
+{
+  "op": "write",
+  "path": "workspace/research/notes.md",
+  "text": "# Research notes\n\n明确标记为待验证的想法。\n",
+  "expected_sha256": null
+}
+```
 
-verification 不由普通提案创建。实际核验操作记录责任人、时间、说明、源快照/节点/Claim 哈希。它验证本地完整性与声明，不自动证明语义、身份、科学真伪或伦理许可。
+null 仅用于尚不存在的新文件；已有文件使用实际 SHA-256。可提案写入范围是 workspace/、manuscript/ 下的 Markdown，排除报告目录；不能通过提案执行代码、直接写 state.json 或生成实验收据。研究代码在人工审查流程中单独管理。
 
-issues 记录 severity、node、message、source、status 及实际修复依据。approvals 记录领域、责任人、说明、指纹、human_declared 与 demonstration_only。领域审核不能由已记录写作者自审；全部声明都需对应当前指纹。
+## 引用、同步和审核
 
-events 是带前序哈希的本地事件链；tasks 是按当前问题路由的 Skill 待办，旧指纹任务会 supersede；sync 保存上次一致章节及标记外文本哈希。
+引用键使用 `[@SRC-001]` 或 `[@SRC-001; @SRC-002]`，应对应有效 source。证据用必要逐字原文、locator 和适用范围支撑精确 Claim。source.snapshot 的哈希、引用原文、Claim text/strength/scope 及核验记录均参与有效性判断。
 
-这些本地记录不具备真正身份认证或不可抵赖性。团队需要更强权限、签名与审计时，应开发单独服务端层。未来 schema 变化必须有明确迁移实现；当前遇到未知 schema 会停止。
+章节使用 `<!-- rw:section SEC-ID -->` 与 `<!-- /rw:section SEC-ID -->` 成对标记。同步基线记录上一轮每节文字；请勿丢弃这些标记或用相同 ID 表示不同章节。
+
+审核与导出使用整个当前项目指纹。审核者姓名及 `--human` 是本地声明，程序不认证身份；同一已登记写作者不能作为独立审核者。demo 模式的声明不能用于真实研究放行。
+
+## 文件所有权
+
+可更新目标由 `upgrade.owned()` 白名单控制：入口文档、框架政策、空模板、Skills、Skills 锁文件，以及已注册宿主副本。实际论文、已填写工作表、研究数据/代码/结果、用户规则、state.json 均不在该白名单。
+
+`.rw/framework.json` 保存旧默认内容及宿主列表，不能随意删除或凭猜测重建。`schema_version` 未被引擎支持时拒绝更新；升级必须有显式迁移实现和测试。

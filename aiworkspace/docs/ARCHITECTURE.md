@@ -1,88 +1,67 @@
-# 架构与扩展点
+# 架构与演进边界
 
-## 一、三个实体与一条受控工作流
+## 分层和数据所有权
 
-框架包维护通用程序、Skills、空模板和更新机制；论文项目保存具体研究；Manuscript 与 Workspace 在论文项目中并列。AI 宿主可替换，研究状态不依赖某次聊天。
+框架 checkout 存引擎、通用 Skills、模板、测试和说明。每篇论文在独立目录维护 `workspace/` 与 `manuscript/` 两个并列部分。`workspace/state.json` 是节点、提案、问题、事件、任务和同步基线的权威快照；正文、原始材料、代码和数据保留独立可检查文件。不要在不同数据库/Markdown 表格中维护互相竞争的同一研究状态。
+
+| 用户要求的状态 | 实现位置 |
+|---|---|
+| Research & Logic | question/hypothesis/argument/section/claim 节点；research/idea-evaluation.md |
+| Sources & Literature | source 节点；sources/searches、sources/snapshots |
+| Evidence | evidence 节点及支持/反驳/条件关系；evidence/ 附件 |
+| Method & Analysis | method/result 节点；methods、data、results |
+| Rules | rule 节点；框架默认政策和用户专属政策 |
+| Figures & Tables | figure 节点；原始数据、运行记录与 manuscript/figures |
+| Decisions & History | decision 节点、事件哈希链、history/、非证据 memory.md |
+| Sync State | 按章节的同步基线、提案、冲突、语义复核问题 |
+
+## 执行闭环
 
 ```text
-Human / authorized coding agent / optional JSON API
-                       ↓
-                Bounded Research Skill
-                       ↓
-           Proposal + dependency impact
-                       ↓
-                Explicit approval
-                       ↓
-       Workspace ↔ Three-way Sync ↔ Manuscript
-                       ↓
-        Independent context + machine checks
-                       ↓
-             Issues / next-Skill tasks
-                       ↓
-       Current-snapshot human review + author release
+新问题/新文献/新数据/反馈
+ → Researcher（发现）
+ → Source Policy（原始来源与核验边界）
+ → Knowledge & Evidence（支持/反驳/条件）
+ → Logic & Methodology（问题、整体论证、设计和推断）
+ → 变更提案 + 依赖影响分析 + 作者批准
+ → Writing / Figure（可追踪输出）
+ → Manuscript Sync（三方同步与语义复核）
+ → Reviewer / Rules（机器检查 + 独立领域审查）
+ → cycle 生成下一轮 Skill 任务
 ```
 
-这是一套可停止、可审查、可恢复的状态流程。`cycle` 只分派任务，不执行无限代理循环。工具输出、模型输出和用户决定分别记录，不把任一层直接当成科学事实。
+CLI 管确定性状态和边界；Skills 指导授权 AI 完成语义工作；人负责研究选择、原文核验、执行授权和最终责任。不会启动无界后台代理。`rw ai run` 是一次受限 JSON 调用；浏览器/实验/多步编排应由有工具的宿主实际执行并保留记录。
 
-## 二、模块职责
+## 依赖方向与影响传播
 
-| 模块 | 职责 |
-|---|---|
-| model.py | schema、节点契约、稳定 ID、规范化哈希、可终止的依赖闭包 |
-| store.py | 安全路径、流式文件哈希、UTF-8 边界、写锁、乐观并发、恢复日志 |
-| workflow.py | 提案/批准/拒绝、联合前后依赖图、影响问题、核验声明 |
-| sync.py | 稳定章节标记、上次同步基线、三方比较、冲突与语义复查 |
-| analysis.py | 明确授权的本地 Python 运行、方法/代码/输入/输出追踪 |
-| review.py | 完整性检查、独立领域声明、指纹绑定质量门与导出 |
-| skills.py | Skills 读取/安装、上下文约束、任务包、问题路由与去重 |
-| adapters.py | 显式联网的 Crossref 发现和一次 JSON 模型请求 |
-| upgrade.py | 只更新默认资产的三方合并、备份、恢复及保守回滚 |
-| scaffold.py | 新项目初始化、用户副本、研究/稿件并列布局 |
-| dashboard.py | 转义后的离线只读 HTML 快照，不提供写入服务器 |
-| demo.py / cli.py | 合成端到端演练和命令入口 |
+`depends_on` 表示“本节点依赖哪些节点”。传播从变化节点向所有依赖它的节点闭包扩展；遍历具有环保护。例如：
 
-## 三、八类状态的落点
+```text
+source → evidence → claim → section / figure
+question → hypothesis → argument → section
+method → result → source/evidence → claim
+```
 
-Research & Logic 使用 question、hypothesis、argument、claim、section；Sources 使用 source 与实际查询日志；Evidence 使用独立 evidence；Method & Analysis 使用 method、result 与外部文件；Rules 使用项目政策与 rule；Figures & Tables 使用 figure 记录和真实生成结果；Decisions & History 使用 decision 与事件；Sync State 使用章节基线、提案、问题和待办。
+Evidence 中的 `data.claim` 表示其评价对象，同时 Claim 的依赖包含 evidence；不要为该语义关联额外制造依赖环。显示/导出 Evidence Matrix 应从状态生成视图。
 
-`workspace/state.json` 是这些实体的权威快照，Markdown 原文、数据、代码与稿件保存在独立文件。不要再建立一份独立可编辑、却不与 state 同步的 Claim 清单。Evidence Matrix 和 Argument Map 应作为规范状态的视图或受控提案产物。
+规则更新按全局影响处理。删除或改变依赖时，提案对新旧依赖做保守影响评估。未声明的关系不会被图自动发现；Logic/Sync 必须检查摘要、讨论、结论与图注的语义联系。循环依赖虽然不会卡死算法，仍可能是论证缺陷。
 
-## 四、依赖图与科学推断
+## 写入、审批与恢复
 
-节点 `depends_on` 指向它依赖的上游。影响从上游传播到使用者：Source → Evidence → Claim → Section/Figure。证据对 Claim 的支持/反驳关系同时存于 evidence.data；Claim 依赖相关 Evidence，核验收据绑定 Claim 文本、推断强度和范围。
+提案保存 base_fingerprint；Markdown 写入另外带 expected_sha256。批准前发现资料已变化即拒绝过期提案。写入有单写者锁、状态哈希并发检查及事务日志；中断后显式 recover，遇到中断后新增的本地编辑则停止。不会自动清理被其他活跃进程持有的锁。
 
-提案用修改前与修改后依赖的联合图做影响分析，删除一条旧依赖不会隐藏原来的下游影响。规则改变保守地触发广泛复核。算法用 visited 集合处理循环，避免无限遍历；它不能证明逻辑无循环论证或科学推断成立。
+事件包含 previous/hash，可发现普通篡改；用户有文件系统权限时能重写整个历史，因此它不构成防篡改认证系统。权限、签名与审计需要未来的独立安全基础设施。
 
-没有登记的自然语言关系不能由机器凭空理解。稿件回流一律产生语义复查；因果/相关、否定、范围、数值和比较对象的变化，要交给 Logic/Evidence 与作者检查全部受影响解释。
+## 同步与质量门
 
-## 五、状态变更与核验
+Markdown 章节有稳定 ID，保留 base/workspace/manuscript 三份内容。一侧变化生成同步提案，两侧冲突需要明确选择。Manuscript 回流或标记外编辑产生语义复核问题；不靠简单词替换自动判断所有因果关系。
 
-节点 draft/confirmed/retired 表示项目中的决策状态。source/evidence 的 verification 独立记录实际核验人的声明、时间、备注和相关哈希；confirmed 不自动等于来源已经核验。
+机器检查覆盖结构、引用键、原文摘录/哈希、证据适用指纹、执行收据、图表来源、占位内容、待办和同步完整性。最终还需八个领域的独立人审及作者发布声明。任何关键内容/框架资产变化使旧快照声明失效。
 
-提案 pending → applied/rejected。提案绑定创建时研究指纹；研究改变后旧提案失效。upsert 是完整节点替换，write 仅支持受限制 Markdown 和期望文件哈希。普通提案不能生成验证收据或实际运行证明。Result 还需匹配引擎执行事件。
+## 扩展接口
 
-文件、Claim 强度/范围或研究政策变化后旧证据/审批需要重新检查。AI 能提出变化，不能伪造核验、审批或作者决定。
+`model.py` 定义节点和版本；`store.py` 管事务；`workflow.py` 管提案/证据；`sync.py` 管格式适配；`analysis.py` 管执行收据；`adapters.py` 管网络；`review.py` 管问题与导出；`skills.py` 管任务包/路由；`upgrade.py` 管资产；`dashboard.py` 管只读视图。
 
-## 六、并发、恢复与安全边界
+新增数据库适配器先只产生带来源的候选记录。新增稿件适配器必须保留稳定 ID、外部编辑、三方冲突和恢复测试。新增 Schema 版本需先提供已用项目迁移/回滚测试；当前对未知版本直接拒绝，绝不重建用户数据。新 Skills 注册方式见 [SKILLS](SKILLS.md)。
 
-Store 用原 state 文件哈希检测并发状态变化，文件写入另检查 expected_sha256。单文件使用原子替换，多文件先写恢复日志。中断后需显式 recover，恢复过程中发现新用户改动会停止。
-
-这是本地单写者模型，不是多人实时数据库。事件哈希链用于发现意外/不一致修改，不抵抗拥有整个目录写权限的恶意操作者。actor 名字和 --human 是责任声明，不认证身份。更强审计需要服务端权限、签名和不可变存储。
-
-研究指纹纳入引擎版本、项目配置、节点、问题、研究/稿件文件及入口政策。自动报告不进入指纹，避免生成报告本身使声明失效。未处理提案、重大问题和同步状态另外参与质量门。
-
-代码执行并未沙箱化；上游更新 apply 表示明确授权安装该版本代码。白名单资产更新不能替代对上游代码本身的供应链审查。
-
-## 七、如何扩展
-
-新增 Skill：写清触发、输入、流程、输出、失败边界和评测，修改 SKILLS 注册、release manifest、版本和测试。不要把某个宿主的工具名当成全体用户都有的能力。
-
-新增数据库：独立 adapter 保留查询/时间/过滤/原始响应/覆盖局限，默认禁网，结果先进入未核验 source。加去重、格式错误、超时、权限和隐私测试。
-
-新增稿件格式：适配稳定段落/章节 ID 和三方冲突语义。Word Track Changes、LaTeX、Overleaf 不可用整文件覆盖冒充无损同步；当前仅 Markdown 原生支持。
-
-新增数据 schema：先实现明确、带备份和失败恢复的迁移，准备真实旧项目 fixture，验证信息和 ID 不丢失。当前未知 schema 会拒绝，不能放宽检查后猜测数据转换。
-
-新增可执行规则：不支持的规则类型必须明确阻塞。自动匹配到几个关键词不能被说成完成伦理/法规/期刊合规审查。
-
-版本发布必须同时考虑新建项目与已使用项目。验收核心是旧研究继续可读、可运行、可审查、可回退，而不仅是新页面能显示。
+本版存储刻意保持 JSON/Markdown 可读与可迁移。未来可在相同领域契约外增加 Web UI、签名审批、数据库、多文档适配和有边界的任务执行器，保持用户数据所有权与原文证据边界不变。

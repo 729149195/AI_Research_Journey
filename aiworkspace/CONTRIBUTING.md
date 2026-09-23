@@ -1,58 +1,44 @@
-# 维护与贡献
+# 迭代与贡献
 
-本子项目独立于父仓库的 Vue 应用。默认仅修改 ai-research-workspace/ 与明确属于本项目的 CI 文件，不借机重写其他应用。
+所有框架代码/Skills/模板/文档保持在 aiworkspace/；根目录只保留公共更新入口和使用说明。请勿把个人论文、原始参与者数据、密钥或第三方受限全文提交进框架。
 
-## 开发和验证
+## 修改前确定层次
 
-在 Python 3.11+ 的独立虚拟环境中安装：`python -m pip install -e .`。从默认分支创建功能分支，以一个明确研究场景为单位开发。
+某篇论文的规则与研究放在该项目的 workspace/；通用 Skill 改 research_workspace/assets/skills；默认模板改 assets/templates；确定性引擎改对应 Python 模块。具体模块职责见 [架构](docs/ARCHITECTURE.md)。不要为修改个人写作偏好调整引擎数据 Schema。
+
+在分支上开发，提交说明包含目的、影响、测试、兼容性与回滚方式。保持输入输出协议明确，错误时停止，旧用户内容完整可恢复。API/外部服务改变需核对官方文档并记录日期；固定第三方来源 commit 和许可，不自动执行外部 Skill 的安装命令。
+
+## 本地验证
+
+从仓库根目录、专用虚拟环境运行：
 
 ```bash
-python -m unittest discover -s tests -v
-python scripts/smoke_update_install.py
-python scripts/check_docs.py
-python -m compileall -q research_workspace scripts
-rw doctor
-rw demo ../../new-synthetic-demo
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install --no-deps --no-build-isolation -e ./aiworkspace
+python aiworkspace/scripts/run_tests.py
+python aiworkspace/scripts/smoke_root_update.py
+python aiworkspace/scripts/check_docs.py
+rw demo ../new-demo-directory
 ```
 
-demo 目标须是新目录；它只能生成合成项目，不能替真实作者签字。升级集成测试只操作临时 Git 仓库与虚拟环境；需要开发环境已安装 setuptools。
+单元测试离线，包含模拟网络响应；更新集成测试使用临时 Git 仓库和实际 editable 安装，复制当前环境已有的构建工具进入临时 venv。测试脚本只删除其自行创建的临时探针，不删除用户研究。
 
-PR 应说明：用户场景、输入/输出、修改的契约、隐私与执行影响、已测环境、未测能力、更新/回退方式。GitHub Checks 的实际结果才是托管验收依据；写了一份 workflow 文件不代表它已经运行通过。
+打包检查：`python -m pip wheel --no-deps --no-build-isolation ./aiworkspace -w ../workspace-wheels`，再在全新 venv、源码目录之外安装 wheel 并运行 doctor/demo。修改图表后必须打开实际输出检查。
 
-## 修改位置
+## 必须覆盖的回归
 
-| 内容 | 位置 |
-|---|---|
-| 角色工作流 | research_workspace/assets/skills/NAME/SKILL.md |
-| 上游来源与选择理由 | assets/skills.lock.json |
-| 空模板与项目入口 | assets/templates、AGENTS.md、START_HERE.md |
-| 可更新默认资产 | assets/release.json |
-| 状态契约 | model.py、docs/SCHEMA.md |
-| 提案/证据/影响 | workflow.py |
-| 双向同步 | sync.py |
-| 检索或模型适配 | adapters.py |
-| 质量门 | review.py |
-| 项目默认资产更新 | upgrade.py |
-| Git/引擎更新 | scripts/update.py |
+证据/源文件/Claim 改动后旧核验失效；反证保留；未跑实验不能伪造成功；方法和输出哈希一致；双方稿件改动不会互相覆盖；过期提案拒绝；中断事务可恢复且不覆盖新编辑；重大问题/缺失人审阻断导出；demo 不得成为真实投稿。
 
-## 发布纪律
+更新相关修改还需：已填写工作表/稿件/数据/代码/用户规则哈希不变；本地 Skill 定制保留；冲突停写；新增/删除默认资产回滚；错误路径/符号链接拒绝；旧目录迁移；真实本地编辑保持可见；版本锁定；重复检查；未知 Schema 拒绝。
 
-当前引擎/资产版本 0.1.0、研究 schema 1。发布时同步 pyproject.toml、research_workspace/__init__.py、assets/release.json、CHANGELOG；行为变化的 Skill 也更新 metadata version。
+## 扩展与版本
 
-同 schema 的 Skill、空模板和框架政策可以三方更新。严禁把 state.json、workspace/research、data、methods、results、evidence、用户 policy 或 manuscript 加入默认资产覆盖范围。更新器的路径白名单是契约，不随意放宽。
+新增 Skill 的注册与评估见 [Skills](docs/SKILLS.md) 和 [行为场景](evals/README.md)。文档契约检查不能替代真实模型评估。每个真实宿主试验记录 host/model/version/permission、任务、输入指纹、实际输出、观察者和失败，不从生成文本推断“已测试”。
 
-未来改变 schema 前，必须先实现明确迁移、旧项目 fixture、备份、验证、失败恢复与回滚方案。未知 schema 当前应拒绝，不能用猜测或重置取代迁移。
+发布时同步 pyproject.toml、__init__.py、assets/release.json 的框架版本；按实际需要更新 Skill metadata。Schema 只有结构契约变化才升级，先实现显式迁移与恢复测试。本版只支持 Schema 1。
 
-每个新版本至少测试 N-1→N：未改默认、本地单改、双方不重叠修改、冲突、新增/删除资产、宿主 Skill 副本、更新/回滚中断、后续用户改动保护、幂等性，以及研究文件哈希不变。引擎 Git/pip 与项目资产提交不具有跨系统原子性，错误必须明确区分。
+Release PR 包含 changelog、迁移/兼容性、测试输出和已知边界。GitHub CI 未成功时不能声称绿色；区分本地验证、CI 结果和模型/科学评估。工作流失败应查看实际 job/annotations 后诊断，不推测原因。
 
-## Skill 与模型质量
+## 模板许可
 
-新 Skill 必须有触发、输入、输出、停止条件和失败评测。不得把付费工具、自动联网或外部脚本执行偷偷加入默认流程。新 adapter 需要最小权限、响应边界、保密、格式/失败/重试策略测试。
-
-evals/scenarios.json 是行为评测计划。实际运行时记录模型、宿主版本、日期、输入指纹、权限、重复次数、费用、输出和人工判断。没有执行的场景保持 not_run。软件测试不能替代科研质量、语言质量或专家审查。
-
-## 协作与权利
-
-真实论文使用独立私有仓库，原始数据另做备份。state.json 是单写者状态，不是实时协作数据库；Git 冲突需审查节点/提案含义，不能简单全选 ours/theirs。
-
-代码和原创 Skills 为 MIT。用户上传的 Idea Evaluation 原文及紧密改编工作表保留原权利，不属于本项目擅自授予的 MIT 范围。二次公开分发模板前由维护者确认许可。不要提交未授权论文全文、参与者数据、密钥或第三方机密审稿内容。
+上传 PPT 的原文和紧密改编工作表保留原权利，见 [LICENSE](LICENSE)。无来源许可时不扩大再分发授权，不补入未提供的幻灯片内容，不捆绑原 PPT。

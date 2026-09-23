@@ -22,7 +22,7 @@
 
 ## 更新已使用项目
 
-先关闭正在写项目的编辑器/AI，在框架目录运行 `python scripts/update.py --project 此项目路径 --ref origin/main --check`，审查后改用 --apply。功能在 PR 分支时使用 origin/feat/ai-research-workspace。
+先结束正在写项目的编辑器/AI任务，并备份研究数据。在框架仓库根目录运行 `python update_aiworkspace.py --project 此项目路径 --check`，审查后使用 `--apply --actor 姓名`。可加 `--expected-commit 实际完整SHA` 锁定检查过的版本。脚本位于 aiworkspace/ 目录旁，默认跟踪 origin/main。
 
 只更新项目默认资产时用 `rw upgrade check`，再 `rw upgrade apply --actor NAME --approve`。保留 `.rw/framework.json`；用 `rw upgrade history` 查看备份，`rw upgrade rollback UPDATE-ID` 回滚默认资产。更新不会覆盖稿件、数据、方法、证据或已填写工作表。完整冲突/恢复说明见框架 docs/UPDATING.md。
 

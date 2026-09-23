@@ -28,3 +28,12 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# AI Workspace generated files, including remnants of an old package layout.
+# Real research belongs outside this framework checkout.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+.env.*

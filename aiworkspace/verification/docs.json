@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "relative_links_checked": 51,
+  "managed_assets": 17,
+  "skill_scenarios": 14,
+  "errors": [],
+  "boundary": "Offline documentation, asset and scenario structure checks; no live-host behavior evaluation."
+}

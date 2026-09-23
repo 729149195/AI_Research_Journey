@@ -1,13 +1,10 @@
-__pycache__/
-*.py[cod]
-*.egg-info/
 .venv/
+__pycache__/
+*.pyc
+*.egg-info/
 build/
 dist/
 .env
 .env.*
-!.env.example
-.rw/
-.local/
+.pytest_cache/
 .coverage
-htmlcov/

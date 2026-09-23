@@ -1,73 +1,76 @@
-# Start without previous context
+# English quickstart
 
-AI Research Workspace is a local-first research beta with a standard-library Python CLI and nine portable Skills. It keeps research state and manuscript as sibling directories. It does not include a large language model, authenticate reviewer identities, or certify scientific validity.
+AI Research Workspace is a local-first, evidence-governed research framework. The engine, nine editable Agent Skills, templates, tests and documentation live under `aiworkspace/`; the public updater and main usage README sit at the repository root. The existing Vue application is preserved and is not required.
 
-## Install and try
+## Install and run a real software demonstration
 
-Install Python 3.11+ and Git, clone the repository's feat/ai-research-workspace branch, and enter ai-research-workspace. After the PR is merged, the default branch can be used.
+Python 3.11+ and Git are required. Run from a terminal:
 
 ```bash
-python -m venv .venv
-# macOS/Linux:
+git clone https://github.com/729149195/AI_Research_Journey.git
+cd AI_Research_Journey
+python3 -m venv .venv
 source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip setuptools wheel
-python -m pip install -e .
+python -m pip install --no-deps --no-build-isolation -e ./aiworkspace
 rw doctor
-rw demo ../../research-demo
+rw demo ../research-demo
 ```
 
-The demonstration requires no API key. It creates synthetic paired data, actually runs a descriptive calculation, records evidence and result provenance, synchronizes both directions, exercises project asset upgrades/rollback and checks release gates. All human verification and review declarations in the example are explicitly simulated. Open research-demo/workspace/reports/dashboard.html and walkthrough.json. The dashboard is an offline read-only snapshot.
+On Windows use `py -3 -m venv .venv`, then `.venv\Scripts\python.exe` for Python commands and `.venv\Scripts\python.exe -m research_workspace` instead of `rw`. No execution-policy change is needed. Runtime dependencies are standard-library only; installation needs the build tools above.
 
-## Create your study
+The demo actually computes synthetic observations, creates JSON/text/SVG artifacts, links Claims and evidence, synchronizes both directions, tests an incremental asset update and rollback, and exports only a explicitly labeled demonstration package. Simulated human declarations are not real expert review. View `../research-demo/workspace/reports/dashboard.html` offline and read `walkthrough.json`. Use a new destination when repeating it.
 
-Keep study directories outside the framework Git checkout:
+## Create a separate research study
 
 ```bash
-rw init ../../my-paper --name "My study" --author "Your name"
-rw --project ../../my-paper skills install --target .agents/skills
-# Claude Code: --target .claude/skills
-rw --project ../../my-paper packet idea-evaluation --task "Critique my idea, compare feasible options and identify missing evidence."
+rw init ../my-paper --name "My research paper" --author "Your name"
+rw --project ../my-paper status
+rw --project ../my-paper review
 ```
 
-Open my-paper in your authorized coding agent. Read START_HERE.md, AGENTS.md, project policies and workspace/state.json. Fill workspace/research/idea-evaluation.md; empty templates remain in workspace/templates for future upgrades. The worksheet preserves the owner's ten-slide visualization-oriented planning structure and separates added Workspace fields from the original text.
+A fresh study is expected to be blocked. Fill `workspace/research/idea-evaluation.md` and `workspace/rules/project-policy.md`. The study has sibling `workspace/` and `manuscript/` directories. Store private research outside the public framework checkout. Keep `.rw/framework.json`; it is the update baseline.
 
-The workflow is discovery → original reading → evidence verification → logic/methods → proposals → approval → writing/figures → synchronization → independent review → next tasks. Unknown facts, unrun experiments and unavailable sources stay unknown. History and AI memory are context, not evidence.
+The Idea Evaluation template faithfully retains the supplied ten-part visualization-research structure. Its source transcription and adapted worksheet are Markdown, with added Workspace fields identified. No PPT binary or invented scoring rubric is distributed; original template rights remain reserved.
 
-## Apply changes explicitly
-
-An ordinary task response returns summary, base_fingerprint and operations. An upsert contains a complete node, not a partial patch. Markdown writes need the original file hash. Stage JSON using `rw propose FILE --actor NAME`, inspect the returned proposal with `rw show ID`, then the accountable author applies it with `rw apply ID --actor NAME --approve --note "Actual checks and reasons"`.
-
-`rw sync status` shows both sides against the previous baseline. `rw sync propose --actor sync-agent` creates a proposal; divergent edits need explicit resolution. Every manuscript-to-research change creates semantic review work. Text equality does not establish that Claims, methods and conclusions are scientifically consistent.
-
-`rw review` writes machine checks; return code 1 means the quality gate remains blocked. `rw cycle --actor coordinator` routes issues to Skills without starting a background autonomous loop. Qualified people perform domain reviews; current-snapshot declarations and author release are required before `rw export NEW_DIRECTORY`.
-
-## Incremental upgrades after real use
-
-Close active study writers. In the framework checkout and its dedicated virtual environment:
+## Bring your own authorized agent
 
 ```bash
-python scripts/update.py --project ../../my-paper --ref origin/feat/ai-research-workspace --check
-python scripts/update.py --project ../../my-paper --ref origin/feat/ai-research-workspace --apply --actor "Your name"
+rw --project ../my-paper skills install --target .agents/skills
+# For a Claude Code host, choose .claude/skills instead.
+rw --project ../my-paper packet idea-evaluation --task "Review my filled idea worksheet and identify evidence gaps"
 ```
 
-After merge, normally switch your clean Git checkout to main and use origin/main. A squash merge may create divergent history; the updater refuses forced resets. It never automatically stashes or discards source edits.
-
-The project updater compares the previous defaults, current local files and new defaults. Non-overlapping edits merge; unresolved conflicts stop the whole asset update. Filled research, raw data, evidence, methods, project-specific policy and manuscript are never default-asset targets. Preserve .rw/framework.json and maintain separate full research-data backups.
+Start the host at the study root and ask it to read START_HERE.md and AGENTS.md. Skill files do not grant a model account, network permission or database access. Alternatively pass an authorized task packet to your model. The model returns proposed operations; it must not impersonate a human verifier or reviewer.
 
 ```bash
-rw --project ../../my-paper upgrade check
-rw --project ../../my-paper upgrade apply --actor "Your name" --approve
-rw --project ../../my-paper upgrade history
-rw --project ../../my-paper upgrade rollback UPDATE-ACTUAL_ID
+rw --project ../my-paper propose aiworkspace/examples/first-proposal.json --actor ai-session
+rw --project ../my-paper show PROP-ID
+rw --project ../my-paper apply PROP-ID --actor "Your name" --approve --note "I reviewed the actual draft change and its implications; scientific validation is still pending."
 ```
 
-These subcommands update project defaults only. The Python script additionally fetches and installs framework code. Git/pip/project writes are separate stages; partial failures are reported. Rollback refuses to overwrite edits made after an update. Unknown research schemas are refused until an explicit tested migration exists. See [UPDATING](UPDATING.md).
+Replace placeholder IDs with actual returned IDs. Next, verify original sources, execute reviewed analysis, prepare writing/figures and synchronize. `rw sync propose` is itself a proposal. Both-side conflicts require explicit choices; manuscript edits create semantic review tasks. `rw review` and `rw cycle --actor coordinator` identify the next work rather than running an invisible agent loop.
 
-## Models, privacy and actual verification
+## Update an already-used study
 
-External AI is disabled until project consent, an HTTPS host allowlist, RW_API_KEY and explicit per-call permission are supplied. The API adapter is one bounded JSON request, not a browser/tool agent. An authorized coding-agent host can perform multi-step work using its own permitted tools. See [SKILLS](SKILLS.md).
+From the framework repository root, stop active writers, back up research data, and use the dedicated venv:
 
-Markdown is the native manuscript format. Word, LaTeX, Overleaf, Zotero and authenticated multi-user editing are not implemented. Local Python execution is not sandboxed. Do not upload confidential manuscripts, personal/participant data or credentials to a public repository or unauthorized model service.
+```bash
+python update_aiworkspace.py --project ../my-paper --check
+python update_aiworkspace.py --project ../my-paper --apply --actor "Your name"
+```
 
-Run the tests and consult the actual GitHub Checks. [TEST_REPORT](TEST_REPORT.md), [architecture](ARCHITECTURE.md), [schema](SCHEMA.md), [contribution rules](../CONTRIBUTING.md) and [security](../SECURITY.md) explain what was implemented, how to validate it and what remains outside the guarantee.
+Add `--expected-commit FULL_PREVIEWED_SHA` to lock the reviewed target, or `--offline` to use fetched objects. The three-way asset merge preserves local-only edits, merges nonoverlapping changes and stops on conflicts. Research state, filled worksheets, project policy, evidence, data, methods, results and manuscripts are not asset overwrite targets.
+
+```bash
+rw --project ../my-paper upgrade history
+rw --project ../my-paper upgrade rollback UPDATE-ID
+```
+
+Rollback protects subsequent local edits and restores managed assets only. Engine recovery is separate. Unknown schemas are blocked; no guessed migration resets a study. See [Updating](UPDATING.md).
+
+## Verification and limitations
+
+Run `python aiworkspace/scripts/run_tests.py`, `python aiworkspace/scripts/smoke_root_update.py`, and `python aiworkspace/scripts/check_docs.py`. Read [Delivery](../DELIVERY.md) for actual results and limitations. Native sync is Markdown-only; full Word/LaTeX/Overleaf round trips, authenticated approvals and real-time collaborative storage are not implemented. External API mode is opt-in and was tested with mocks, not a paid live provider. Machine integrity checks do not certify scientific validity or publication readiness.
+
+See [Architecture](ARCHITECTURE.md), [Schema](SCHEMA.md), [Skills](SKILLS.md), [Contributing](../CONTRIBUTING.md) and [Security](../SECURITY.md).

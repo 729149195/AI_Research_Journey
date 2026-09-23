@@ -1,95 +1,64 @@
-# Skills 的选择、使用与迭代
+# Skills：选型、接入与后续修改
 
-## 选择标准与实际审查范围
+## 已内置的 9 个工作流
 
-本项目提供 9 个项目专用 Skills：researcher、knowledge-evidence、logic-methodology、writing-language、figure-visualization、manuscript-sync、reviewer、rules-compliance、idea-evaluation。
+| Skill | 负责什么 | 交付什么 |
+|---|---|---|
+| researcher | 规划、文献/工具发现、检索覆盖与 Source Policy | 查询记录、候选来源、工具比较、证据缺口 |
+| knowledge-evidence | 读原文、保留定位和限定条件、反证 | Evidence Matrix 与精确 Claim 关系提案 |
+| logic-methodology | 整篇论文论证、研究设计、统计、可复现分析 | 逻辑图、方法方案、边界、全局影响任务 |
+| writing-language | 仅从确认逻辑/Claim/证据/规则写作 | 可审查正文和语言修改提案 |
+| figure-visualization | 按任务选择工具、保留数据/代码/生成过程 | 图表规范、实际输出检查与追踪关系 |
+| manuscript-sync | 双向差异、冲突、含义变化 | 三方同步提案和语义复核任务 |
+| reviewer | 新上下文独立审查 | Critical Issues、Required Fixes、Final Review Report |
+| rules-compliance | 核查机构/导师/期刊/伦理/AI/引用规则 | 规则注册、适用性、冲突和重新检查任务 |
+| idea-evaluation | 按上传 PPT 的十部分审查研究方向 | 保留可视化设计问题的工作表与备选方案 |
 
-选择看任务适配、原始来源可追踪性、输入/输出契约、证据和权限约束、可复现性、维护成本、依赖、许可证与隐私。这里没有覆盖所有候选、学科或模型的质量排名，不能据此声称“全网最佳”。
+源码在 `research_workspace/assets/skills/`。每个 SKILL.md 都有触发条件、Inputs、Workflow、Outputs、Boundaries 和 Evaluation。项目初始化会复制这些文件；后续按资产基线三方更新。
 
-内置文本参考了下面已检查的公开工作流，并按本项目的状态、提案、同步与质量门重新组织。没有整库复制，也没有执行或自动安装第三方脚本。
+## 选型依据与可审计来源
 
-| 上游参考 | 固定版本 | 已读范围 | 采用与调整 |
-|---|---|---|---|
-| K-Dense-AI/scientific-agent-skills | 49c6e97775eaa18ba791bebe23162a70ae601c18 | peer-review/SKILL.md 1–170 | 独立、证据优先、保密与人工负责 |
-| 同上 | 同上 | scientific-writing/SKILL.md 1–150 | 有依据的写作，禁止虚构，写作与放行分离 |
-| 同上 | 同上 | scientific-critical-thinking/SKILL.md 1–130 | 方法、偏差与推断；按学科选择框架 |
-| 同上 | 同上 | scientific-visualization/SKILL.md 1–120 | 真实编码、数据变换可追踪、检查实际输出 |
-| 同上 | 同上 | literature-review/SKILL.md 1–180 | 检索记录与原始来源；不强制 AI 图、固定数据库数或付费工具 |
-| 同上 | 同上 | statistical-analysis/SKILL.md 1–140 | 设计、效应、不确定性；不把 p 值写成证明，不机械选择检验 |
-| anthropics/skills | 34040c9c568585f6929bedeaad110ad08f079624 | skills/skill-creator/SKILL.md 1–110 | 明确触发、契约与迭代评测 |
+查看 [锁定清单](../research_workspace/assets/skills.lock.json)，记录具体 commit、blob SHA、阅读范围、采用内容与不采用内容。选择标准为任务适配、原始证据追踪、研究完整性、输入输出清晰、可复现、可维护、许可/依赖透明、成本、隐私和失败处理。
 
-完整仓库路径、blob SHA、采用理由和限制在 [skills.lock.json](../research_workspace/assets/skills.lock.json)。上述范围是部分 SKILL.md 阅读，不构成仓库安全审计、依赖审计或许可证授权。将来若真正 vendoring 代码，需要重新确认并保留相应许可证。
+已阅读 K-Dense 的 peer-review、scientific-writing、scientific-critical-thinking、scientific-visualization、literature-review、statistical-analysis，以及 Anthropic 的 skill-creator 部分主文件。内置的是适应该 Workspace 数据和审批契约的原创工作流，未把上游全部脚本和依赖捆绑进来。
 
-原始参考可直接检查：
+上游固定版本：
 
-- [K-Dense 固定版本](https://github.com/K-Dense-AI/scientific-agent-skills/tree/49c6e97775eaa18ba791bebe23162a70ae601c18/skills)
-- [Anthropic Skill Creator 固定版本](https://github.com/anthropics/skills/blob/34040c9c568585f6929bedeaad110ad08f079624/skills/skill-creator/SKILL.md)
-- [Agent Skills 格式](https://agentskills.io/specification)
+- [K-Dense Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills/tree/49c6e97775eaa18ba791bebe23162a70ae601c18)，包含研究/写作/审核指导。
+- [Anthropic skill-creator](https://github.com/anthropics/skills/tree/34040c9c568585f6929bedeaad110ad08f079624/skills/skill-creator)，参考显式契约与迭代评估。
 
-外部 Skill 是工作流参考，不是支撑论文 Claim 的科研证据。
+采用证据优先、独立审核、真实执行记录和逐层写作检查。不采用强制付费工具、每篇综述必须 AI 生图、任意最低数据库数、机械统计分流或“p 值证明效应”等表述。阅读部分主文档不等于审查整个上游仓库；没有声称全网最优或运行过所有模型的对照基准。
 
-## Idea Evaluation
+截至 2026-09-23 核对的官方格式与宿主文档：[Agent Skills](https://agentskills.io/specification)、[OpenAI Skills 文档入口](https://developers.openai.com/codex/skills/)、[Claude Code Skills](https://code.claude.com/docs/en/skills)。实际发现路径、版本与权限以你正在使用的宿主为准；本工程未做每个宿主的实时兼容性验收。
 
-idea-evaluation 来自用户实际提供的 10 页 PPT。保留原模板的背景/问题、方法特色、贡献、比较与借鉴文献、2–4 个可视化编码/布局/交互设计、实际结果、预期结果/评价、局限、预期图表与剩余任务。
+## 三种使用方式
 
-[逐页原文](../research_workspace/assets/templates/idea-evaluation.original.md) 与 [可填写模板](../research_workspace/assets/templates/idea-evaluation.md) 分开。新增 ID、证据状态、方案比较、决策和复查条件明确标注为 Workspace 补充。没有编造评分标准，也没有发布二进制 PPT。填写项目中的 workspace/research/idea-evaluation.md，空模板留在 templates 供更新。
+**有工具的宿主。** 在论文目录安装 `.agents/skills` 或 `.claude/skills` 副本，在论文根目录启动宿主并读 AGENTS.md。宿主实际完成检索/阅读/分析/写作后，把结构化修改导入提案。外部 Skills 和网页是待审查输入，不能覆盖本项目的安全/来源政策。
 
-## 安装到已有 coding agent
+**任务包。** `rw packet SKILL --task "具体问题" --focus NODE-ID` 生成当前指纹、相关研究节点、适用规则和 Skill 契约。普通 AI 返回提案；Reviewer 返回问题。任务包有 200 KB 上限，超限提示收窄 focus，不会悄悄截断证据链。将未发表研究发给远程模型前必须有授权。
 
-```bash
-rw --project ../../my-paper skills list
-rw --project ../../my-paper skills show logic-methodology
-rw --project ../../my-paper skills lint
-rw --project ../../my-paper skills install --target .agents/skills
-# Claude Code 使用 --target .claude/skills
-```
-
-在 my-paper 根目录打开宿主，先读 START_HERE.md 和 AGENTS.md。目录约定参考 [Codex Skills](https://developers.openai.com/codex/skills/) 和 [Claude Code Skills](https://code.claude.com/docs/en/skills)。实际发现和执行取决于宿主版本、工作目录、权限及模型，不是复制文件后就完成了实际模型验收。
-
-主副本是 workspace/skills；修改后重新安装到宿主需明确 `--overwrite`，先保存并比较宿主已有修改。已登记的宿主副本可随项目资产更新进行三方合并。不要在两个地方反复修改同一条规则却不说明哪一份是主版本。
-
-## 不依赖聊天上下文的任务包
+**可选 API 单次调用。** 以下示例中的主机/endpoint/model 都要改为你实际获准使用的服务。支持 Chat Completions 形状的 JSON 接口；供应商仍可能不支持某些参数，失败会明确报告。
 
 ```bash
-rw --project ../../my-paper packet logic-methodology --focus CLM-001 --task "检查该 Claim 的推断是否超出证据范围，并定位全部下游章节"
+rw --project ../my-paper ai configure --enable --host api.example.org --actor "作者姓名" --note "已核对本项目、数据许可和服务条款，授权向该主机发送本次所需的研究上下文。"
+# 将 RW_API_KEY 设置到进程环境，不要写入仓库或任务文件。
+rw --project ../my-paper ai run logic-methodology --task "审查 CLM-001 的推断范围" --focus CLM-001 --model 实际模型ID --endpoint https://api.example.org/v1/chat/completions --allow-network
 ```
 
-JSON 包含真实研究指纹、任务、Skill、政策、依赖闭包和输出契约。大于 200 KB 时明确拒绝，要求缩小 focus。包中记录不能代替尚未提供的完整原文、代码或实验；需要时由已授权宿主读取实际材料。
+API 模式不会自行浏览、安装 Skill 或执行工具；它传递限定上下文并接收 JSON。普通返回先成为 pending proposal；Reviewer 返回的是未核实 AI 问题，不能签署人工审核。allowlist、项目授权、环境密钥及逐次 `--allow-network` 同时成立才调用。拒绝重定向、超大/截断输出、错误指纹与过期上下文。
 
-Writing 包过滤未确认/未核验证据和无有效支持的 Claim，并排除 decision；Reviewer 包附稿件、排除作者说服性决策历史和 Memory。不同上下文有助于分工，但同一个模型换会话不等于真正独立的专家。
+`store: false` 只是向服务发送的参数，不能保证第三方不留存数据。没有真实付费模型/API 验收；单元测试使用明确的 mock。
 
-普通模型结果必须回传 summary、base_fingerprint 和 operations，导入为 pending 提案。Reviewer 结果是待核查问题，不是人工批准。
+## 如何定制，哪些修改会被升级保护
 
-## 可选 API 模式
+仅针对某篇论文：编辑它的 `workspace/rules/project-policy.md`、`workspace/skills/NAME/SKILL.md`。宿主副本有独立路径，检查后手动同步或经批准重新安装；`--overwrite` 会覆盖相同宿主文件，请勿无检查使用。更新器会对已注册副本分别处理三方冲突。
 
-默认禁用。先核查机构、期刊、数据许可与保密要求，再记录明确授权：
+面向所有使用者：在本框架修改 `research_workspace/assets/skills/NAME/SKILL.md`，更新版本/变更说明，添加行为场景，运行测试并提交。Skills 文档修改本身无需改变 Schema。
 
-```bash
-rw --project ../../my-paper ai configure --enable --host api.openai.com --actor "作者姓名" --note "已核查项目资料的外部处理权限、机构与目标期刊规则，并明确授权发送本次有界上下文。"
-```
+新增第十个自定义能力：在 assets/skills 新增符合格式的文件；注册到 `skills.py` 的 SKILLS/必要 ROUTES；在 release.json 添加受管目标；更新测试中的数量和角色覆盖。若要管理 SKILL.md 以外的资源，显式扩展打包与 owned 白名单，先写路径/删除/冲突/回滚测试，禁止用通配符开放整个研究目录。
 
-密钥使用进程环境变量 `RW_API_KEY`；不放在命令参数、仓库、图像、日志或研究笔记中。程序不自动读取 .env。使用自己账户实际可用、支持契约的模型：
+## 评估与工具发现
 
-```bash
-rw --project ../../my-paper ai run logic-methodology \
-  --task "审查已提供的设计与论证，不补造来源或结果" \
-  --model YOUR_AVAILABLE_MODEL \
-  --endpoint https://api.openai.com/v1/chat/completions \
-  --allow-network
-```
+[行为测试场景](../evals/scenarios.json) 覆盖九个 Skills；[评估说明](../evals/README.md) 区分格式契约、确定性软件测试和真实宿主行为评估。现有65项软件测试与实际 demo/更新演练不自动证明写作或模型推理质量。
 
-最小接口契约为 Chat Completions 的 messages、response_format=json_object、max_completion_tokens、store=false，以及完整 choices[0].message.content、finish_reason=stop。模型还必须回传任务指纹。参考 [官方接口](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)。其他 compatible 服务可能不支持全部字段，需要独立适配和测试。
-
-这只执行一次无工具 JSON 请求，不自行浏览、运行实验或串行执行全部 Skills。模型结果截断、非法、过期或试图伪造收据时不接受。HTTPS 主机白名单、拒绝重定向、超时和响应大小限制不能替代数据处理合同；store=false 也不是零留存保证。POST 不自动重试，避免重复费用。
-
-禁用外部 AI 时，执行 ai configure 并省略 --enable：
-
-```bash
-rw --project ../../my-paper ai configure --actor "作者姓名" --note "关闭此研究项目的外部模型处理，后续任何重新启用均须重新核查授权。"
-```
-
-## 迭代 Skill 的正确单位
-
-一次修改解决一个清晰场景：触发条件、必需输入、合法输出、停止条件、失败示例与实际验收。更新 Skill metadata version、登记理由、CHANGELOG 和对应测试，使用 PR 审查。
-
-确定性测试只能证明规则和状态操作；写作质量、科学论证和研究价值仍需模型/人工场景评测。[evals/scenarios.json](../evals/scenarios.json) 中未实际运行的条目必须保持 not_run，不能把模板 lint 或软件测试通过写成模型科学能力排名。
+Researcher 遇到未知任务时比较可用数据库、模型、统计/绘图工具或外部 Skill 的原始来源支持、可复现性、成本、许可证及信息流向。先记录建议并获得安装/付费/联网授权；不会不加审查拉取远程脚本或自动升级整套第三方依赖。
