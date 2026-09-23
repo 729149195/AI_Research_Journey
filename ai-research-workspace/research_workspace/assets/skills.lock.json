@@ -1,0 +1,88 @@
+{
+  "registry_version": 1,
+  "reviewed_at": "2026-09-23",
+  "policy": "Reference-only registry. Built-in Skills are project-specific workflows, not wholesale vendored upstream code. No third-party scripts installed or executed. Partial document review is not a repository security/license audit or a global best-Skill benchmark.",
+  "selection_criteria": ["task fit", "original-source traceability", "research integrity", "clear inputs and outputs", "reproducibility", "maintainability", "license and dependency visibility", "cost", "privacy", "failure behavior"],
+  "references": [
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/peer-review/SKILL.md",
+      "blob_sha": "ea0ca64ff7f90784ddc61a5aed95fb6e9ce53a44",
+      "reviewed_lines": "1-170",
+      "local_skills": ["reviewer", "rules-compliance"],
+      "adopted": "Independent evidence-first review, confidentiality and explicit human responsibility.",
+      "boundary": "Only stated SKILL.md excerpt reviewed; not all references, scripts or dependencies. No license grant inferred."
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/scientific-writing/SKILL.md",
+      "blob_sha": "bb4741e7264302bc5cee6cc1a42e521117728b2a",
+      "reviewed_lines": "1-150",
+      "local_skills": ["writing-language", "knowledge-evidence"],
+      "adopted": "Evidence-bound drafting, no invented citations, separate writing and final approval.",
+      "boundary": "Local contracts replace host-specific or unavailable tooling assumptions."
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/scientific-critical-thinking/SKILL.md",
+      "blob_sha": "e12cbea98525f5d728fa2ef74b72f9c09b9fef73",
+      "reviewed_lines": "1-130",
+      "local_skills": ["logic-methodology", "knowledge-evidence"],
+      "adopted": "Examine methods, bias, inference and applicability; domain-specific frameworks only where justified.",
+      "boundary": "A checklist does not automatically validate science."
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/scientific-visualization/SKILL.md",
+      "blob_sha": "13f3ae9b115aefc2f15098bcfd460f0b96e047c2",
+      "reviewed_lines": "1-120",
+      "local_skills": ["figure-visualization"],
+      "adopted": "Truthful encoding, preserved data transformations and actual output inspection.",
+      "boundary": "No universal required plotting library or image generator."
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/literature-review/SKILL.md",
+      "blob_sha": "2f85676f1a06fd71d7f9c6ebfa6d2670c099a2e1",
+      "reviewed_lines": "1-180",
+      "local_skills": ["researcher"],
+      "adopted": "Traceable search planning and synthesis, subject to local Source Policy.",
+      "not_adopted": "Mandatory AI-generated figures, arbitrary minimum database counts, or forced paid tools."
+    },
+    {
+      "repository": "K-Dense-AI/scientific-agent-skills",
+      "commit": "49c6e97775eaa18ba791bebe23162a70ae601c18",
+      "path": "skills/statistical-analysis/SKILL.md",
+      "blob_sha": "6f6d0fa886b5f5825618af731ca77e76daea4a24",
+      "reviewed_lines": "1-140",
+      "local_skills": ["logic-methodology"],
+      "adopted": "Record design, assumptions, effect estimates, uncertainty and reproducibility.",
+      "not_adopted": "Claims that p-values prove an effect; mechanical one-size-fits-all test selection."
+    },
+    {
+      "repository": "anthropics/skills",
+      "commit": "34040c9c568585f6929bedeaad110ad08f079624",
+      "path": "skills/skill-creator/SKILL.md",
+      "blob_sha": "65b3a402dbd09b8e83f9d637c6b553875189085c",
+      "reviewed_lines": "1-110",
+      "local_skills": ["all"],
+      "adopted": "Task triggers, explicit input/output contracts and iterative behavioral evaluation.",
+      "boundary": "No external code copied; full licensing and dependency review would be required before any future vendoring."
+    }
+  ],
+  "template": {
+    "source": "Owner-supplied 10-slide PowerPoint",
+    "sha256": "5047476a1d3cfc77a19530e433b7d1977954e8ba7c20988c0377cf0630dbd830",
+    "local_skill": "idea-evaluation",
+    "transcription": "workspace/templates/idea-evaluation.original.md",
+    "worksheet": "workspace/research/idea-evaluation.md",
+    "license": "Original rights retained; excluded from the project's MIT grant. Binary PPT not distributed."
+  },
+  "format_sources": ["https://agentskills.io/specification", "https://developers.openai.com/codex/skills/", "https://code.claude.com/docs/en/skills"],
+  "live_model_quality_evaluation": "not_run; see evals/scenarios.json"
+}
