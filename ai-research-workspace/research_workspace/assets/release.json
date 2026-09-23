@@ -1,0 +1,24 @@
+{
+  "manifest_version": 1,
+  "version": "0.1.0",
+  "schema_version": 1,
+  "files": {
+    "AGENTS.md": "AGENTS.md",
+    "CLAUDE.md": "CLAUDE.md",
+    "START_HERE.md": "START_HERE.md",
+    "workspace/rules/framework-policy.md": "PROJECT_POLICY.md",
+    "workspace/skills.lock.json": "skills.lock.json",
+    "workspace/templates/idea-evaluation.original.md": "templates/idea-evaluation.original.md",
+    "workspace/templates/idea-evaluation.md": "templates/idea-evaluation.md",
+    "workspace/templates/idea_evluation.md": "templates/idea_evluation.md",
+    "workspace/skills/researcher/SKILL.md": "skills/researcher/SKILL.md",
+    "workspace/skills/knowledge-evidence/SKILL.md": "skills/knowledge-evidence/SKILL.md",
+    "workspace/skills/logic-methodology/SKILL.md": "skills/logic-methodology/SKILL.md",
+    "workspace/skills/writing-language/SKILL.md": "skills/writing-language/SKILL.md",
+    "workspace/skills/figure-visualization/SKILL.md": "skills/figure-visualization/SKILL.md",
+    "workspace/skills/manuscript-sync/SKILL.md": "skills/manuscript-sync/SKILL.md",
+    "workspace/skills/reviewer/SKILL.md": "skills/reviewer/SKILL.md",
+    "workspace/skills/rules-compliance/SKILL.md": "skills/rules-compliance/SKILL.md",
+    "workspace/skills/idea-evaluation/SKILL.md": "skills/idea-evaluation/SKILL.md"
+  }
+}
