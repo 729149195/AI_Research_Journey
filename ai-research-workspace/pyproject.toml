@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-research-workspace"
+version = "0.1.0"
+description = "Local-first evidence-governed research and manuscript workspace"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT; excludes owner-supplied template text"}
+authors = [{name = "AI Research Workspace contributors"}]
+dependencies = []
+
+[project.scripts]
+rw = "research_workspace.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["research_workspace*"]
+
+[tool.setuptools.package-data]
+research_workspace = ["assets/*.json", "assets/*.md", "assets/templates/*.md", "assets/skills/*/*.md"]
