@@ -3,14 +3,13 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'ai-research-workspace/research_workspace/**'
-      - 'ai-research-workspace/tests/**'
-      - 'ai-research-workspace/scripts/**'
-      - 'ai-research-workspace/pyproject.toml'
+      - 'aiworkspace/**'
+      - 'update_aiworkspace.py'
       - '.github/workflows/research-workspace.yml'
   pull_request:
     paths:
-      - 'ai-research-workspace/**'
+      - 'aiworkspace/**'
+      - 'update_aiworkspace.py'
       - '.github/workflows/research-workspace.yml'
 permissions:
   contents: read
@@ -26,47 +25,47 @@ jobs:
         python: ['3.11', '3.13']
     defaults:
       run:
-        working-directory: ai-research-workspace
+        working-directory: aiworkspace
         shell: bash
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: ${{ matrix.python }}
-      - name: Install development build tools and package
+      - name: Install build tools and package
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install --no-deps --no-build-isolation -e .
           mkdir -p "$RUNNER_TEMP/verification"
-      - name: Compile and lint Skill contracts
+      - name: Compile and validate Skill contracts
         run: |
           python -m compileall -q research_workspace scripts
           rw doctor | tee "$RUNNER_TEMP/verification/doctor.json"
-      - name: Run regression suite with machine-readable results
+      - name: Regression tests
         run: python scripts/run_tests.py --output "$RUNNER_TEMP/verification/unit-tests.json"
-      - name: Actual Git fetch install used-study update and rollback
+      - name: Used-study Git update and rollback
         run: python scripts/smoke_update_install.py | tee "$RUNNER_TEMP/verification/git-update-install.json"
       - name: Build distributable wheel
         run: python -m pip wheel --no-deps --no-build-isolation . -w "$RUNNER_TEMP/rw-wheels"
-      - name: Install wheel in a fresh environment and execute from outside source
+      - name: Clean installed end-to-end demonstration
         run: |
           python -m venv "$RUNNER_TEMP/rw-acceptance-venv"
           "$RUNNER_TEMP/rw-acceptance-venv/bin/python" -m pip install --no-deps "$RUNNER_TEMP"/rw-wheels/ai_research_workspace-*.whl
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/rw-acceptance-venv/bin/rw" doctor | tee "$RUNNER_TEMP/verification/installed-doctor.json"
           "$RUNNER_TEMP/rw-acceptance-venv/bin/rw" demo "$RUNNER_TEMP/research-demo" | tee "$RUNNER_TEMP/verification/installed-demo.json"
-      - name: Documentation consistency
+      - name: Documentation checks
         run: |
           if [ -f scripts/check_docs.py ]; then
             python scripts/check_docs.py | tee "$RUNNER_TEMP/verification/docs.json"
           fi
-      - name: Package clean source and synthetic demonstration
+      - name: Package source and synthetic demonstration
         run: python scripts/package_delivery.py --destination "$RUNNER_TEMP/delivery" --demo "$RUNNER_TEMP/research-demo" --wheel-dir "$RUNNER_TEMP/rw-wheels"
-      - name: Attach actual results and delivery files
+      - name: Attach verification evidence
         if: always()
-        uses: actions/upload-artifact@f998e4c9b7a1c3d5e6f8092a4b6c8d0e2f4a6b8c # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: research-workspace-python-${{ matrix.python }}
           path: |
